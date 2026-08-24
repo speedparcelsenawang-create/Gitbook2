@@ -7,6 +7,7 @@ import 'lightgallery.js/dist/css/lightgallery.css';
 import 'lightgallery.js/dist/js/lightgallery.js';
 import { marked } from 'marked';
 import { DEFAULT_BOOK_TITLE, normalizeBookTitle, normalizeDocumentState } from '../src/data-store.js';
+import { parseMarkdownImages, serializeMarkdownImage } from '../src/media-markdown.js';
 
 const STORAGE_KEY = 'docbook_data_v1';
 const THEME_KEY = 'docbook_theme';
@@ -69,6 +70,28 @@ const translations = {
     danger: 'Danger',
     quote: 'Quote',
     uploadMedia: 'Muat naik gambar/video',
+    imageUrl: 'URL imej',
+    imageName: 'Nama imej',
+    defaultImageCaption: 'Imej',
+    imageUrlPlaceholder: 'https://contoh.com/gambar.jpg',
+    imageNamePlaceholder: 'Nama atau caption imej',
+    insertImage: 'Masukkan URL',
+    mediaManager: 'Imej dalam halaman',
+    mediaManagerHint: 'Setiap imej akan disimpan sebagai satu baris Markdown.',
+    editImage: 'Edit imej',
+    addCaption: 'Caption',
+    replaceImage: 'Ganti imej',
+    replacementUrl: 'URL imej baharu',
+    chooseImage: 'Pilih imej',
+    deleteImage: 'Padam imej',
+    confirmDeleteImage: 'Padam imej ini daripada kandungan?',
+    noImages: 'Belum ada imej dalam halaman ini.',
+    invalidImageUrl: 'Sila masukkan URL imej yang sah.',
+    invalidImageFile: 'Sila pilih fail imej yang sah.',
+    imageReady: 'Imej ditambah ke kandungan.',
+    imageUpdated: 'Imej dikemas kini.',
+    imageDeleted: 'Imej dipadam.',
+    fileSelected: 'Fail dipilih',
     preview: 'Preview',
     backToEditor: 'Kembali ke editor',
     seeMore: 'Lihat lagi',
@@ -130,6 +153,28 @@ const translations = {
     danger: 'Danger',
     quote: 'Quote',
     uploadMedia: 'Upload image/video',
+    imageUrl: 'Image URL',
+    imageName: 'Image name',
+    defaultImageCaption: 'Image',
+    imageUrlPlaceholder: 'https://example.com/image.jpg',
+    imageNamePlaceholder: 'Image name or caption',
+    insertImage: 'Insert URL',
+    mediaManager: 'Images in this page',
+    mediaManagerHint: 'Each image is stored as one Markdown line.',
+    editImage: 'Edit image',
+    addCaption: 'Caption',
+    replaceImage: 'Replace image',
+    replacementUrl: 'New image URL',
+    chooseImage: 'Choose image',
+    deleteImage: 'Delete image',
+    confirmDeleteImage: 'Delete this image from the content?',
+    noImages: 'There are no images in this page yet.',
+    invalidImageUrl: 'Please enter a valid image URL.',
+    invalidImageFile: 'Please choose a valid image file.',
+    imageReady: 'Image added to the content.',
+    imageUpdated: 'Image updated.',
+    imageDeleted: 'Image deleted.',
+    fileSelected: 'File selected',
     preview: 'Preview',
     backToEditor: 'Back to editor',
     seeMore: 'See more',
@@ -466,7 +511,12 @@ function renderContent() {
   `;
 
   const pageBody = document.getElementById('pageBody');
-  pageBody.innerHTML = renderMarkdown(node.content || '');
+  const normalizedContent = normalizeLegacyMediaContent(node.content || '');
+  if (normalizedContent !== (node.content || '')) {
+    node.content = normalizedContent;
+    saveState();
+  }
+  pageBody.innerHTML = renderMarkdown(normalizedContent);
   enhanceDocumentPage(pageBody);
 
   const titleEl = document.getElementById('pageTitle');
@@ -600,6 +650,38 @@ function escapeAttribute(value) {
     .replace(/>/g, '&gt;');
 }
 
+function normalizeLegacyMediaContent(text) {
+  const legacyGalleryPattern = /<div\b[^>]*class=(["'])[^"']*\bmedia-gallery\b[^"']*\1[^>]*>[\s\S]*?<\/div>\s*(?:<button\b[^>]*class=(["'])[^"']*\bmedia-gallery-toggle\b[^"']*\2[^>]*>[\s\S]*?<\/button>)?/gi;
+
+  return String(text || '').replace(legacyGalleryPattern, (block) => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = block;
+    const snippets = [];
+
+    wrapper.querySelectorAll('.media-item').forEach((item) => {
+      const image = item.querySelector('img[src]');
+      if (image) {
+        const src = image.getAttribute('src') || '';
+        if (src) {
+          const caption = image.getAttribute('alt') || '';
+          snippets.push(`![${safeMarkdownCaption(caption)}](${src})`);
+        }
+        return;
+      }
+
+      const video = item.querySelector('video[src]');
+      if (video) {
+        const src = video.getAttribute('src') || '';
+        if (src) {
+          snippets.push(`<video controls preload="metadata" src="${escapeAttribute(src)}"></video>`);
+        }
+      }
+    });
+
+    return snippets.length ? `\n${snippets.join('\n')}\n` : '';
+  });
+}
+
 function buildMediaGalleryMarkup(items) {
   const isCollapsed = items.length > 4;
   const visibleItems = items.slice(0, 4);
@@ -672,33 +754,246 @@ function initMediaGallery(pageBody) {
   });
 }
 
-async function handleMediaUpload(files, textarea) {
-  if (!files || !files.length) return;
-  const mediaItems = [];
+function parseEditorImages(text) {
+  const source = text || '';
+  const htmlPattern = /<img\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>/gi;
+  const items = parseMarkdownImages(source).map((image) => ({
+    ...image,
+    id: `image-${image.start}`
+  }));
 
-  for (const file of files) {
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) continue;
-
-    const src = URL.createObjectURL(file);
-
-    mediaItems.push({
-      type: file.type.startsWith('video/') ? 'video' : 'image',
-      src,
-      title: file.name,
-      mimeType: file.type
+  let match;
+  while ((match = htmlPattern.exec(source))) {
+    items.push({
+      id: `image-${match.index}`,
+      start: match.index,
+      end: match.index + match[0].length,
+      syntax: 'html',
+      src: match[2],
+      caption: (match[0].match(/\balt=(["'])(.*?)\1/i) || [])[2] || ''
     });
   }
 
-  if (!mediaItems.length) return;
+  return items.sort((a, b) => a.start - b.start);
+}
 
-  const snippet = buildMediaGalleryMarkup(mediaItems).trim();
+function imageCaptionFromFilename(filename) {
+  return String(filename || 'Imej').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim() || 'Imej';
+}
+
+function isValidImageSource(source) {
+  if (!source) return false;
+  try {
+    const url = new URL(source, window.location.href);
+    return ['http:', 'https:', 'data:', 'blob:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Unable to read image'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function safeMarkdownCaption(value) {
+  return String(value || 'Imej')
+    .replace(/[\r\n\[\]]/g, '')
+    .trim() || 'Imej';
+}
+
+function insertTextAtSelection(textarea, value) {
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
-  const current = textarea.value;
-  const nextValue = `${current.slice(0, start)}\n${snippet}\n${current.slice(end)}`;
-  textarea.value = nextValue;
+  textarea.setRangeText(value, start, end, 'end');
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
   textarea.focus();
-  textarea.setSelectionRange(start + snippet.length + 2, start + snippet.length + 2);
+}
+
+function replaceEditorImage(textarea, media, src, caption) {
+  const safeCaption = safeMarkdownCaption(caption);
+  const replacement = media.syntax === 'html'
+    ? `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(safeCaption)}">`
+    : serializeMarkdownImage({ caption: safeCaption, src, title: media.title });
+  textarea.setRangeText(replacement, media.start, media.end, 'end');
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.focus();
+}
+
+function removeEditorImage(textarea, media) {
+  textarea.setRangeText('', media.start, media.end, 'end');
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.focus();
+}
+
+function setMediaStatus(message, isError = false) {
+  const status = document.getElementById('mediaStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle('is-error', isError);
+}
+
+async function handleMediaUpload(files, textarea) {
+  const selectedFiles = [...(files || [])];
+  const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+  const videoFiles = selectedFiles.filter(file => file.type.startsWith('video/'));
+  if (!imageFiles.length && !videoFiles.length) {
+    setMediaStatus(getText('invalidImageFile'), true);
+    return;
+  }
+
+  try {
+    const imageSnippets = await Promise.all(imageFiles.map(async (file) => {
+      const src = await readFileAsDataUrl(file);
+      return `![${safeMarkdownCaption(imageCaptionFromFilename(file.name))}](${src})`;
+    }));
+    const videoItems = videoFiles.map((file) => ({
+      type: 'video',
+      src: URL.createObjectURL(file),
+      title: file.name,
+      mimeType: file.type
+    }));
+    const videoMarkup = videoItems.length ? buildMediaGalleryMarkup(videoItems).trim() : '';
+    const snippets = [
+      imageSnippets.join('\n'),
+      videoMarkup
+    ].filter(Boolean);
+
+    insertTextAtSelection(textarea, `\n${snippets.join('\n')}\n`);
+    setMediaStatus(getText('imageReady'));
+  } catch (error) {
+    console.warn('Unable to read image file', error);
+    setMediaStatus(getText('invalidImageFile'), true);
+  }
+}
+
+function renderMediaManager(textarea) {
+  const list = document.getElementById('mediaList');
+  if (!list) return;
+
+  const images = parseEditorImages(textarea.value);
+  if (!images.length) {
+    list.innerHTML = `<p class="media-empty">${getText('noImages')}</p>`;
+    return;
+  }
+
+  list.innerHTML = images.map((media) => `
+    <div class="media-row" data-media-id="${media.id}">
+      <div class="media-thumb">
+        <img src="${escapeAttribute(media.src)}" alt="${escapeAttribute(media.caption || getText('imageName'))}">
+      </div>
+      <div class="media-row-details">
+        <input class="media-name-input" type="text" value="${escapeAttribute(media.caption)}" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}" aria-label="${escapeAttribute(getText('imageName'))}">
+        <span class="media-source" title="${escapeAttribute(media.src)}">${escapeHtml(media.src)}</span>
+      </div>
+      <button type="button" class="btn btn-ghost media-edit-button">${getText('editImage')}</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.media-row').forEach((row, index) => {
+    const media = images[index];
+    row.querySelector('.media-name-input').addEventListener('change', (event) => {
+      replaceEditorImage(textarea, media, media.src, event.target.value);
+      setMediaStatus(getText('imageUpdated'));
+    });
+    row.querySelector('.media-edit-button').addEventListener('click', () => {
+      openMediaEditDialog(textarea, media);
+    });
+  });
+}
+
+function openMediaEditDialog(textarea, media) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop media-edit-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal media-edit-modal" role="dialog" aria-modal="true" aria-labelledby="mediaEditTitle">
+      <div class="media-edit-heading">
+        <div>
+          <p class="media-edit-eyebrow">${getText('mediaManager')}</p>
+          <h3 id="mediaEditTitle">${getText('editImage')}</h3>
+        </div>
+        <button type="button" class="icon-btn media-edit-close" aria-label="${getText('close')}">×</button>
+      </div>
+      <img class="media-edit-preview" src="${escapeAttribute(media.src)}" alt="${escapeAttribute(media.caption || getText('imageName'))}">
+      <label class="media-field-label" for="mediaCaptionInput">${getText('addCaption')}</label>
+      <input id="mediaCaptionInput" type="text" value="${escapeAttribute(media.caption)}" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+      <label class="media-field-label" for="mediaReplacementInput">${getText('replaceImage')}</label>
+      <input id="mediaReplacementInput" type="url" value="" placeholder="${escapeAttribute(getText('replacementUrl'))}">
+      <div class="media-replace-actions">
+        <button type="button" class="btn btn-ghost" id="chooseReplacementFile">📁 ${getText('chooseImage')}</button>
+        <span class="media-file-status" id="mediaFileStatus"></span>
+        <input type="file" id="replacementFileInput" accept="image/*" hidden>
+      </div>
+      <p class="media-edit-status" id="mediaEditStatus"></p>
+      <div class="modal-actions media-edit-actions">
+        <button type="button" class="btn btn-danger" id="deleteMediaButton">${getText('deleteImage')}</button>
+        <div>
+          <button type="button" class="btn btn-ghost" id="mediaEditCancel">${getText('cancel')}</button>
+          <button type="button" class="btn btn-primary" id="mediaEditSave">${getText('save')}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  const captionInput = backdrop.querySelector('#mediaCaptionInput');
+  const replacementInput = backdrop.querySelector('#mediaReplacementInput');
+  const fileInput = backdrop.querySelector('#replacementFileInput');
+  const preview = backdrop.querySelector('.media-edit-preview');
+  const editStatus = backdrop.querySelector('#mediaEditStatus');
+  let replacementSource = '';
+
+  backdrop.querySelector('.media-edit-close').addEventListener('click', close);
+  backdrop.querySelector('#mediaEditCancel').addEventListener('click', close);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) close();
+  });
+  backdrop.querySelector('#chooseReplacementFile').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      editStatus.textContent = getText('invalidImageFile');
+      return;
+    }
+    try {
+      replacementSource = await readFileAsDataUrl(file);
+      replacementInput.value = '';
+      preview.src = replacementSource;
+      backdrop.querySelector('#mediaFileStatus').textContent = `${getText('fileSelected')}: ${file.name}`;
+      editStatus.textContent = '';
+    } catch (error) {
+      console.warn('Unable to read replacement image', error);
+      editStatus.textContent = getText('invalidImageFile');
+    }
+  });
+
+  backdrop.querySelector('#mediaEditSave').addEventListener('click', () => {
+    const nextSource = replacementSource || replacementInput.value.trim() || media.src;
+    if (!isValidImageSource(nextSource)) {
+      editStatus.textContent = getText('invalidImageUrl');
+      return;
+    }
+    replaceEditorImage(textarea, media, nextSource, captionInput.value);
+    setMediaStatus(getText('imageUpdated'));
+    close();
+  });
+
+  backdrop.querySelector('#deleteMediaButton').addEventListener('click', () => {
+    confirmModal(getText('confirmDeleteImage'), () => {
+      removeEditorImage(textarea, media);
+      setMediaStatus(getText('imageDeleted'));
+      close();
+    });
+  });
+
+  captionInput.focus();
+  captionInput.select();
 }
 
 function renderEditor(node) {
@@ -740,6 +1035,28 @@ function renderEditor(node) {
         </div>
 
         <input type="file" id="mediaUploadInput" accept="image/*,video/*" multiple hidden>
+        <section class="media-manager" id="mediaManager" aria-labelledby="mediaManagerTitle">
+          <div class="media-manager-header">
+            <div>
+              <h3 id="mediaManagerTitle">${getText('mediaManager')}</h3>
+              <p>${getText('mediaManagerHint')}</p>
+            </div>
+          </div>
+          <div class="media-insert-row">
+            <div class="media-insert-field">
+              <label for="mediaUrlInput">${getText('imageUrl')}</label>
+              <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
+            </div>
+            <div class="media-insert-field media-name-field">
+              <label for="mediaNameInput">${getText('imageName')}</label>
+              <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+            </div>
+            <button type="button" class="btn btn-primary media-insert-button" id="btnInsertImage">＋ ${getText('insertImage')}</button>
+            <button type="button" class="btn btn-ghost media-upload-button" id="btnUploadImage">📷 ${getText('uploadMedia')}</button>
+          </div>
+          <p class="media-status" id="mediaStatus" aria-live="polite"></p>
+          <div class="media-list" id="mediaList"></div>
+        </section>
         <div class="editor-body">
           <textarea class="editor-textarea" id="editorTextarea" spellcheck="false">${escapeHtml(node.content || '')}</textarea>
         </div>
@@ -756,10 +1073,30 @@ function renderEditor(node) {
   `;
   const textarea = document.getElementById('editorTextarea');
   const mediaInput = document.getElementById('mediaUploadInput');
+  renderMediaManager(textarea);
+  textarea.addEventListener('input', () => renderMediaManager(textarea));
+
   document.getElementById('btnUploadMedia').addEventListener('click', () => mediaInput.click());
+  document.getElementById('btnUploadImage').addEventListener('click', () => mediaInput.click());
   mediaInput.addEventListener('change', async () => {
     await handleMediaUpload(mediaInput.files, textarea);
     mediaInput.value = '';
+  });
+  document.getElementById('btnInsertImage').addEventListener('click', () => {
+    const urlInput = document.getElementById('mediaUrlInput');
+    const nameInput = document.getElementById('mediaNameInput');
+    const url = urlInput.value.trim();
+    if (!isValidImageSource(url)) {
+      setMediaStatus(getText('invalidImageUrl'), true);
+      urlInput.focus();
+      return;
+    }
+
+    const caption = nameInput.value.trim() || getText('defaultImageCaption');
+    insertTextAtSelection(textarea, `\n![${safeMarkdownCaption(caption)}](${url})\n`);
+    urlInput.value = '';
+    nameInput.value = '';
+    setMediaStatus(getText('imageReady'));
   });
   contentEl.querySelectorAll('.tb-btn').forEach(button => {
     button.addEventListener('click', () => {
@@ -801,6 +1138,7 @@ function renderEditor(node) {
     const preview = document.createElement('div');
     preview.className = 'markdown-body editor-preview';
     preview.innerHTML = renderMarkdown(textarea.value);
+    document.getElementById('mediaManager').hidden = true;
     textarea.replaceWith(preview);
     document.getElementById('btnPreview').textContent = '✎';
     document.getElementById('btnPreview').title = getText('backToEditor');

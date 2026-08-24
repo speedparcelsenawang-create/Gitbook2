@@ -503,6 +503,8 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 .sidebar {
   width: 260px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   border-right: 1px solid var(--border);
   padding: 20px 12px 18px;
@@ -510,6 +512,22 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   overflow-x: hidden;
   transition: width .28s cubic-bezier(.2,.8,.2,1), margin-left .28s cubic-bezier(.2,.8,.2,1), padding .28s ease, opacity .22s ease, transform .28s ease;
   will-change: width, transform;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sidebar-header {
+  flex: 0 0 auto;
+}
+
+.sidebar-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -604,8 +622,7 @@ body.sidebar-collapsed .content {
 /* ===== Sidebar tree ===== */
 .menu-tree {
   display: flex;
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 2px;
 }

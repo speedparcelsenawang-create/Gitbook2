@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '12mb' }));
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -71,6 +71,47 @@ app.post('/api/docbook', async (req, res) => {
     res.json(state);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/imgbb-upload', async (req, res) => {
+  const apiKey = process.env.IMGBB_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'ImgBB belum dikonfigurasi. Tambah Secret IMGBB_API_KEY dahulu.' });
+  }
+
+  const image = typeof req.body?.image === 'string' ? req.body.image : '';
+  const match = image.match(/^data:(image\/(?:png|jpeg|jpg|gif|webp));base64,([a-zA-Z0-9+/=\s]+)$/);
+  if (!match) {
+    return res.status(400).json({ error: 'Fail imej tidak sah.' });
+  }
+
+  const base64Image = match[2].replace(/\s/g, '');
+  const imageSize = Math.ceil((base64Image.length * 3) / 4);
+  if (imageSize > 8 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Saiz imej melebihi had 8MB.' });
+  }
+
+  try {
+    const body = new URLSearchParams({
+      key: apiKey,
+      image: base64Image
+    });
+    const response = await fetch('https://api.imgbb.com/1/upload', {
+      method: 'POST',
+      body
+    });
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok || !result?.success || !result.data?.url) {
+      console.error('ImgBB upload failed:', response.status, result?.error?.message || 'Unknown provider error');
+      return res.status(502).json({ error: 'ImgBB gagal menerima imej. Sila cuba lagi.' });
+    }
+
+    return res.json({ url: result.data.url });
+  } catch (error) {
+    console.error('ImgBB request failed:', error.message);
+    return res.status(502).json({ error: 'Tidak dapat menyambung ke ImgBB. Sila cuba lagi.' });
   }
 });
 

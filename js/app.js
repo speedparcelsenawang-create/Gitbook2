@@ -92,6 +92,7 @@ const translations = {
     imageUpdated: 'Imej dikemas kini.',
     imageDeleted: 'Imej dipadam.',
     fileSelected: 'Fail dipilih',
+    uploadingImage: 'Sedang memuat naik imej ke ImgBB…',
     preview: 'Preview',
     backToEditor: 'Kembali ke editor',
     seeMore: 'Lihat lagi',
@@ -175,6 +176,7 @@ const translations = {
     imageUpdated: 'Image updated.',
     imageDeleted: 'Image deleted.',
     fileSelected: 'File selected',
+    uploadingImage: 'Uploading image to ImgBB…',
     preview: 'Preview',
     backToEditor: 'Back to editor',
     seeMore: 'See more',
@@ -800,6 +802,24 @@ function readFileAsDataUrl(file) {
   });
 }
 
+async function uploadImageDataUrlToImgBB(dataUrl) {
+  const response = await fetch('/api/imgbb-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataUrl })
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.url) {
+    throw new Error(result?.error || 'ImgBB upload failed');
+  }
+  return result.url;
+}
+
+async function uploadImageToImgBB(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  return uploadImageDataUrlToImgBB(dataUrl);
+}
+
 function safeMarkdownCaption(value) {
   return String(value || 'Imej')
     .replace(/[\r\n\[\]]/g, '')
@@ -847,8 +867,9 @@ async function handleMediaUpload(files, textarea) {
   }
 
   try {
+    if (imageFiles.length) setMediaStatus(getText('uploadingImage'));
     const imageSnippets = await Promise.all(imageFiles.map(async (file) => {
-      const src = await readFileAsDataUrl(file);
+      const src = await uploadImageToImgBB(file);
       return `![${safeMarkdownCaption(imageCaptionFromFilename(file.name))}](${src})`;
     }));
     const videoItems = videoFiles.map((file) => ({
@@ -866,8 +887,8 @@ async function handleMediaUpload(files, textarea) {
     insertTextAtSelection(textarea, `\n${snippets.join('\n')}\n`);
     setMediaStatus(getText('imageReady'));
   } catch (error) {
-    console.warn('Unable to read image file', error);
-    setMediaStatus(getText('invalidImageFile'), true);
+    console.warn('Unable to upload image to ImgBB', error);
+    setMediaStatus(error.message || getText('invalidImageFile'), true);
   }
 }
 
@@ -946,14 +967,23 @@ function openMediaEditDialog(textarea, media) {
   const fileInput = backdrop.querySelector('#replacementFileInput');
   const preview = backdrop.querySelector('.media-edit-preview');
   const editStatus = backdrop.querySelector('#mediaEditStatus');
+  const chooseFileButton = backdrop.querySelector('#chooseReplacementFile');
+  const saveButton = backdrop.querySelector('#mediaEditSave');
   let replacementSource = '';
+  let replacementError = false;
 
   backdrop.querySelector('.media-edit-close').addEventListener('click', close);
   backdrop.querySelector('#mediaEditCancel').addEventListener('click', close);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) close();
   });
-  backdrop.querySelector('#chooseReplacementFile').addEventListener('click', () => fileInput.click());
+  replacementInput.addEventListener('input', () => {
+    replacementSource = '';
+    replacementError = false;
+    preview.src = replacementInput.value.trim() || media.src;
+    editStatus.textContent = '';
+  });
+  chooseFileButton.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -962,18 +992,29 @@ function openMediaEditDialog(textarea, media) {
       return;
     }
     try {
-      replacementSource = await readFileAsDataUrl(file);
+      replacementError = false;
+      chooseFileButton.disabled = true;
+      saveButton.disabled = true;
+      editStatus.textContent = getText('uploadingImage');
+      const localPreview = await readFileAsDataUrl(file);
+      preview.src = localPreview;
+      replacementSource = await uploadImageDataUrlToImgBB(localPreview);
       replacementInput.value = '';
-      preview.src = replacementSource;
       backdrop.querySelector('#mediaFileStatus').textContent = `${getText('fileSelected')}: ${file.name}`;
       editStatus.textContent = '';
     } catch (error) {
-      console.warn('Unable to read replacement image', error);
-      editStatus.textContent = getText('invalidImageFile');
+      console.warn('Unable to upload replacement image to ImgBB', error);
+      replacementSource = '';
+      replacementError = true;
+      editStatus.textContent = error.message || getText('invalidImageFile');
+    } finally {
+      chooseFileButton.disabled = false;
+      saveButton.disabled = false;
     }
   });
 
-  backdrop.querySelector('#mediaEditSave').addEventListener('click', () => {
+  saveButton.addEventListener('click', () => {
+    if (replacementError) return;
     const nextSource = replacementSource || replacementInput.value.trim() || media.src;
     if (!isValidImageSource(nextSource)) {
       editStatus.textContent = getText('invalidImageUrl');

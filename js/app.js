@@ -1034,10 +1034,6 @@ function initMediaGallery(pageBody) {
         animateThumb: true,
         showThumbByDefault: true,
         toggleThumb: true,
-        thumbWidth: 84,
-        thumbHeight: 64,
-        thumbMargin: 8,
-        thumbContHeight: 84,
         zoom: true,
         scale: 1,
         actualSize: true,
@@ -1054,7 +1050,6 @@ function initMediaGallery(pageBody) {
         closable: true,
         getCaptionFromTitleOrAlt: false,
         subHtmlSelectorRelative: true,
-        addClass: 'recipebook-lightbox',
         mobileSettings: {
           controls: true,
           showCloseIcon: true,

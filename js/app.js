@@ -93,6 +93,9 @@ const translations = {
     imageDeleted: 'Imej dipadam.',
     fileSelected: 'Fail dipilih',
     uploadingImage: 'Sedang memuat naik imej ke ImgBB…',
+    uploadPasswordTitle: 'Buka akses upload',
+    uploadPasswordPlaceholder: 'Password upload',
+    uploadCancelled: 'Upload dibatalkan.',
     preview: 'Preview',
     backToEditor: 'Kembali ke editor',
     seeMore: 'Lihat lagi',
@@ -177,6 +180,9 @@ const translations = {
     imageDeleted: 'Image deleted.',
     fileSelected: 'File selected',
     uploadingImage: 'Uploading image to ImgBB…',
+    uploadPasswordTitle: 'Unlock image uploads',
+    uploadPasswordPlaceholder: 'Upload password',
+    uploadCancelled: 'Upload cancelled.',
     preview: 'Preview',
     backToEditor: 'Back to editor',
     seeMore: 'See more',
@@ -802,13 +808,81 @@ function readFileAsDataUrl(file) {
   });
 }
 
-async function uploadImageDataUrlToImgBB(dataUrl) {
-  const response = await fetch('/api/imgbb-upload', {
+function requestUploadPassword() {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="uploadPasswordTitle">
+        <h3 id="uploadPasswordTitle">${getText('uploadPasswordTitle')}</h3>
+        <input type="password" id="uploadPasswordInput" placeholder="${escapeAttribute(getText('uploadPasswordPlaceholder'))}" autocomplete="current-password">
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="uploadPasswordCancel">${getText('cancel')}</button>
+          <button class="btn btn-primary" id="uploadPasswordConfirm">${getText('ok')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const input = backdrop.querySelector('#uploadPasswordInput');
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      backdrop.remove();
+      resolve(value);
+    };
+    backdrop.querySelector('#uploadPasswordCancel').addEventListener('click', () => finish(''));
+    backdrop.querySelector('#uploadPasswordConfirm').addEventListener('click', () => finish(input.value));
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) finish('');
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') finish(input.value);
+      if (event.key === 'Escape') finish('');
+    });
+    input.focus();
+  });
+}
+
+let uploadAuthenticationPromise = null;
+
+async function authenticateImgBBUpload() {
+  if (!uploadAuthenticationPromise) {
+    uploadAuthenticationPromise = (async () => {
+      const password = await requestUploadPassword();
+      if (!password) throw new Error(getText('uploadCancelled'));
+      const response = await fetch('/api/imgbb-upload-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || 'Upload authorization failed');
+    })();
+  }
+
+  try {
+    await uploadAuthenticationPromise;
+  } finally {
+    uploadAuthenticationPromise = null;
+  }
+}
+
+async function sendImageToImgBB(dataUrl) {
+  return fetch('/api/imgbb-upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image: dataUrl })
   });
-  const result = await response.json().catch(() => null);
+}
+
+async function uploadImageDataUrlToImgBB(dataUrl) {
+  let response = await sendImageToImgBB(dataUrl);
+  let result = await response.json().catch(() => null);
+  if (response.status === 401 && result?.code === 'UPLOAD_AUTH_REQUIRED') {
+    await authenticateImgBBUpload();
+    response = await sendImageToImgBB(dataUrl);
+    result = await response.json().catch(() => null);
+  }
   if (!response.ok || !result?.url) {
     throw new Error(result?.error || 'ImgBB upload failed');
   }
@@ -868,10 +942,11 @@ async function handleMediaUpload(files, textarea) {
 
   try {
     if (imageFiles.length) setMediaStatus(getText('uploadingImage'));
-    const imageSnippets = await Promise.all(imageFiles.map(async (file) => {
+    const imageSnippets = [];
+    for (const file of imageFiles) {
       const src = await uploadImageToImgBB(file);
-      return `![${safeMarkdownCaption(imageCaptionFromFilename(file.name))}](${src})`;
-    }));
+      imageSnippets.push(`![${safeMarkdownCaption(imageCaptionFromFilename(file.name))}](${src})`);
+    }
     const videoItems = videoFiles.map((file) => ({
       type: 'video',
       src: URL.createObjectURL(file),

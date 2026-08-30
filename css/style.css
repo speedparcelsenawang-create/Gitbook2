@@ -55,7 +55,7 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   background: rgba(15, 23, 42, 0.48);
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s ease;
+  transition: opacity .32s ease;
   z-index: 30;
 }
 .sidebar-overlay.visible {
@@ -526,7 +526,7 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   padding: 16px 10px;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width .28s cubic-bezier(.2,.8,.2,1), margin-left .28s cubic-bezier(.2,.8,.2,1), padding .28s ease, opacity .22s ease, transform .28s ease;
+  transition: width .38s cubic-bezier(.22, 1, .36, 1), margin-left .38s cubic-bezier(.22, 1, .36, 1), padding .34s ease, opacity .3s ease, transform .38s cubic-bezier(.22, 1, .36, 1);
   will-change: width, transform;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;

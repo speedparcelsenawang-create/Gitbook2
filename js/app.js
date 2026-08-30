@@ -959,7 +959,6 @@ function buildMediaGalleryMarkup(items) {
 function groupConsecutiveMarkdownImages(text) {
   const source = String(text || '');
   const images = parseMarkdownImages(source);
-  if (images.length < 2) return source;
 
   const fencedCodeRanges = [];
   let openFence = null;
@@ -1001,10 +1000,10 @@ function groupConsecutiveMarkdownImages(text) {
       current.push(image);
       return;
     }
-    if (current.length > 1) groups.push(current);
+    if (current.length > 0) groups.push(current);
     current = isOwnLine(image) ? [image] : [];
   });
-  if (current.length > 1) groups.push(current);
+  if (current.length > 0) groups.push(current);
   if (!groups.length) return source;
 
   let cursor = 0;

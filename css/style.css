@@ -658,9 +658,19 @@ body.sidebar-collapsed .content {
   margin-left: 16px;
   padding-left: 8px;
   border-left: 1px solid var(--border);
-  display: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .32s cubic-bezier(.22, 1, .36, 1), opacity .2s ease;
 }
-.tree-item.expanded > .tree-children { display: block; }
+.tree-children-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.tree-item.expanded > .tree-children {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
 
 .tree-row {
   display: flex; align-items: center; gap: 4px;
@@ -683,6 +693,7 @@ body.sidebar-collapsed .content {
 }
 .tree-item.expanded > .tree-row .toggle-caret { transform: rotate(90deg); }
 .tree-item.no-children .toggle-caret { visibility: hidden; }
+.toggle-caret:disabled { cursor: default; }
 
 .tree-label {
   flex: 1;

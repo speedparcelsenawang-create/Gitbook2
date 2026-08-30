@@ -43,6 +43,8 @@ const translations = {
     rename: 'Namakan semula',
     moveUp: 'Alih ke atas',
     moveDown: 'Alih ke bawah',
+    expandSubmenu: 'Buka submenu',
+    collapseSubmenu: 'Tutup submenu',
     duplicate: 'Duplikasi',
     deleteNode: 'Padam',
     confirmAction: 'Sahkan Tindakan',
@@ -154,6 +156,8 @@ const translations = {
     rename: 'Rename',
     moveUp: 'Move up',
     moveDown: 'Move down',
+    expandSubmenu: 'Open submenu',
+    collapseSubmenu: 'Close submenu',
     duplicate: 'Duplicate',
     deleteNode: 'Delete',
     confirmAction: 'Confirm Action',
@@ -472,11 +476,18 @@ function renderTreeNode(node) {
   if (!node.children.length) item.classList.add('no-children');
   if (node._expanded) item.classList.add('expanded');
 
-  node.children.forEach(child => childrenEl.appendChild(renderTreeNode(child)));
+  const childrenInner = document.createElement('div');
+  childrenInner.className = 'tree-children-inner';
+  node.children.forEach(child => childrenInner.appendChild(renderTreeNode(child)));
+  childrenEl.appendChild(childrenInner);
+  caret.setAttribute('aria-expanded', String(!!node._expanded));
+  caret.setAttribute('aria-label', node._expanded ? getText('collapseSubmenu') : getText('expandSubmenu'));
+  caret.disabled = !node.children.length;
 
   caret.addEventListener('click', (e) => {
     e.stopPropagation();
     node._expanded = !node._expanded;
+    saveState();
     renderTree();
   });
 

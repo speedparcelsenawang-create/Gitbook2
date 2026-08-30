@@ -100,8 +100,6 @@ const translations = {
     upload: 'Muat naik',
     uploadTab: 'Upload',
     imageListTab: 'Senarai image',
-    fileUploadTab: 'Upload fail',
-    urlUploadTab: 'Guna URL',
     uploadPasswordTitle: 'Buka akses upload',
     uploadPasswordPlaceholder: 'Password upload',
     uploadCancelled: 'Upload dibatalkan.',
@@ -196,8 +194,6 @@ const translations = {
     upload: 'Upload',
     uploadTab: 'Upload',
     imageListTab: 'Image list',
-    fileUploadTab: 'Upload file',
-    urlUploadTab: 'Use URL',
     uploadPasswordTitle: 'Unlock image uploads',
     uploadPasswordPlaceholder: 'Upload password',
     uploadCancelled: 'Upload cancelled.',
@@ -1009,29 +1005,14 @@ function openMediaUploadModal(textarea) {
         <button type="button" class="media-modal-tab" id="mediaListTab" role="tab" aria-selected="false" aria-controls="mediaListPane">${getText('imageListTab')}</button>
       </div>
       <section id="mediaUploadPane" class="media-modal-pane" role="tabpanel" aria-labelledby="mediaUploadTab">
-        <div class="media-source-options" role="tablist" aria-label="${getText('uploadTab')}">
-          <button type="button" class="media-source-option is-active" id="fileUploadMode" role="tab" aria-selected="true">${getText('fileUploadTab')}</button>
-          <button type="button" class="media-source-option" id="urlUploadMode" role="tab" aria-selected="false">${getText('urlUploadTab')}</button>
+        <div class="media-upload-preview" id="mediaUploadPreview" hidden></div>
+        <div class="media-upload-file-row">
+          <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
+          <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
+          <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
         </div>
-        <div id="mediaFilePane" class="media-source-pane">
-          <div class="media-upload-preview" id="mediaUploadPreview" hidden></div>
-          <div class="media-upload-file-row">
-            <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
-            <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
-            <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
-          </div>
-          <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
-          <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
-        </div>
-        <div id="mediaUrlPane" class="media-source-pane" hidden>
-          <div class="media-insert-field">
-            <label for="mediaUrlInput">${getText('imageUrl')}</label>
-            <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
-          </div>
-          <label class="media-field-label" for="mediaNameInput">${getText('imageName')}</label>
-          <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
-          <button type="button" class="btn btn-primary media-url-submit" id="btnInsertImage">＋ ${getText('insertImage')}</button>
-        </div>
+        <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
+        <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
         <p class="media-status" id="mediaStatus" aria-live="polite"></p>
       </section>
       <section id="mediaListPane" class="media-modal-pane" role="tabpanel" aria-labelledby="mediaListTab" hidden>
@@ -1053,16 +1034,10 @@ function openMediaUploadModal(textarea) {
   const captionInput = backdrop.querySelector('#mediaUploadCaption');
   const status = backdrop.querySelector('#mediaStatus');
   const submitButton = backdrop.querySelector('#mediaUploadSubmit');
-  const urlInput = backdrop.querySelector('#mediaUrlInput');
-  const nameInput = backdrop.querySelector('#mediaNameInput');
   const uploadTab = backdrop.querySelector('#mediaUploadTab');
   const listTab = backdrop.querySelector('#mediaListTab');
   const uploadPane = backdrop.querySelector('#mediaUploadPane');
   const listPane = backdrop.querySelector('#mediaListPane');
-  const fileMode = backdrop.querySelector('#fileUploadMode');
-  const urlMode = backdrop.querySelector('#urlUploadMode');
-  const filePane = backdrop.querySelector('#mediaFilePane');
-  const urlPane = backdrop.querySelector('#mediaUrlPane');
   let selectedFile = null;
   let previewUrl = '';
 
@@ -1087,31 +1062,7 @@ function openMediaUploadModal(textarea) {
   };
   uploadTab.addEventListener('click', () => setActiveTab('upload'));
   listTab.addEventListener('click', () => setActiveTab('list'));
-  const setSourceMode = (mode) => {
-    const useUrl = mode === 'url';
-    fileMode.classList.toggle('is-active', !useUrl);
-    urlMode.classList.toggle('is-active', useUrl);
-    fileMode.setAttribute('aria-selected', String(!useUrl));
-    urlMode.setAttribute('aria-selected', String(useUrl));
-    filePane.hidden = useUrl;
-    urlPane.hidden = !useUrl;
-    submitButton.hidden = useUrl;
-  };
-  fileMode.addEventListener('click', () => setSourceMode('file'));
-  urlMode.addEventListener('click', () => setSourceMode('url'));
   renderMediaManager(textarea);
-  backdrop.querySelector('#btnInsertImage').addEventListener('click', () => {
-    const url = urlInput.value.trim();
-    if (!isValidImageSource(url)) {
-      setMediaStatus(getText('invalidImageUrl'), true);
-      urlInput.focus();
-      return;
-    }
-
-    const caption = nameInput.value.trim() || getText('defaultImageCaption');
-    insertTextAtSelection(textarea, `\n![${safeMarkdownCaption(caption)}](${url})\n`);
-    close();
-  });
   chooseButton.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
     selectedFile = fileInput.files[0] || null;

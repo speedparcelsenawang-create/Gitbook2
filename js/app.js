@@ -47,6 +47,8 @@ const translations = {
     ok: 'OK',
     save: 'Simpan',
     searchPlaceholder: 'Cari dokumen…',
+    searchNotFound: 'Search for "{query}" not found',
+    searchSuggestion: 'Try a different keyword or check your spelling.',
     addMenu: 'Tambah Menu',
     addSubmenu: 'Tambah Submenu',
     rename: 'Namakan semula',
@@ -167,6 +169,8 @@ const translations = {
     ok: 'OK',
     save: 'Save',
     searchPlaceholder: 'Search documents…',
+    searchNotFound: 'Search for "{query}" not found',
+    searchSuggestion: 'Try a different keyword or check your spelling.',
     addMenu: 'Add Menu',
     addSubmenu: 'Add Submenu',
     rename: 'Rename',
@@ -2308,12 +2312,23 @@ function initDataTransfer() {
 /* ---------- Search ---------- */
 function initSearch() {
   searchInput.addEventListener('input', () => {
-    const q = searchInput.value.trim().toLowerCase();
+    const query = searchInput.value.trim();
+    const q = query.toLowerCase();
     if (!q) { renderTree(); return; }
     const all = flattenSearch();
     const matchIds = new Set(all.filter(n => n.title.toLowerCase().includes(q)).map(n => n.id));
     // Expand ancestors of matches and filter render
     menuTreeEl.innerHTML = '';
+    if (!matchIds.size) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'search-empty-state';
+      emptyState.innerHTML = `
+        <strong>${escapeHtml(getText('searchNotFound').replace('{query}', query))}</strong>
+        <span>${escapeHtml(getText('searchSuggestion'))}</span>
+      `;
+      menuTreeEl.appendChild(emptyState);
+      return;
+    }
     state.pages.forEach(node => {
       const el = renderFilteredNode(node, matchIds, q);
       if (el) menuTreeEl.appendChild(el);

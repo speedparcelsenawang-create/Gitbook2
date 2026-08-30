@@ -764,6 +764,22 @@ body.sidebar-collapsed .content {
   gap: 1px;
 }
 
+.search-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.search-empty-state strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .tree-item { margin-bottom: 1px; }
 .tree-children {
   margin-left: 21px;

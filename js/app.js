@@ -61,6 +61,8 @@ const translations = {
     editorReady: 'Tiada perubahan belum disimpan',
     editorUnsaved: 'Ada perubahan belum disimpan',
     characters: 'aksara',
+    editorToolbar: 'Toolbar',
+    switchToolGroup: 'Tukar kategori toolbar',
     textTools: 'Teks',
     blockTools: 'Blok',
     calloutTools: 'Callout',
@@ -170,6 +172,8 @@ const translations = {
     editorReady: 'No unsaved changes',
     editorUnsaved: 'Unsaved changes',
     characters: 'characters',
+    editorToolbar: 'Toolbar',
+    switchToolGroup: 'Switch toolbar category',
     textTools: 'Text',
     blockTools: 'Blocks',
     calloutTools: 'Callouts',
@@ -1484,27 +1488,25 @@ function renderEditor(node) {
         </div>
 
         <div class="editor-toolbar" role="toolbar" aria-label="Toolbar Markdown">
-          <div class="editor-toolbar-group">
-            <span class="editor-toolbar-label">${getText('textTools')}</span>
-            <div class="editor-toolbar-buttons">
+          <div class="editor-tool-switcher">
+            <span class="editor-toolbar-label">${getText('editorToolbar')}</span>
+            <button type="button" class="editor-tool-mode" id="editorToolMode" aria-label="${getText('switchToolGroup')}">
+              <span id="editorToolModeLabel">${getText('textTools')}</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+          </div>
+          <div class="editor-tool-panels">
+            <div class="editor-toolbar-group editor-tool-panel" data-tool-panel="text">
               <button class="tb-btn" data-prefix="# " title="${getText('title')}">H</button>
               <button class="tb-btn" data-prefix="**" data-suffix="**" title="${getText('bold')}"><strong>B</strong></button>
               <button class="tb-btn" data-prefix="*" data-suffix="*" title="${getText('italic')}"><em>I</em></button>
               <button class="tb-btn" data-prefix="[" data-suffix="](url)" title="${getText('link')}">↗</button>
-            </div>
-          </div>
-          <div class="editor-toolbar-group">
-            <span class="editor-toolbar-label">${getText('blockTools')}</span>
-            <div class="editor-toolbar-buttons">
               <button class="tb-btn" data-prefix="- " title="${getText('list')}">☷</button>
               <button class="tb-btn" data-snippet="- [ ] Tugas\n- [ ] Tugas lain\n" title="${getText('checklist')}">☑</button>
               <button class="tb-btn" data-prefix="~~~\n" data-suffix="\n~~~" title="${getText('code')}">&lt;/&gt;</button>
               <button class="tb-btn" data-snippet="| Tajuk | Nilai |\n| --- | --- |\n| Contoh | Data |\n" title="${getText('table')}">▦</button>
             </div>
-          </div>
-          <div class="editor-toolbar-group editor-toolbar-group-callouts">
-            <span class="editor-toolbar-label">${getText('calloutTools')}</span>
-            <div class="editor-toolbar-buttons">
+            <div class="editor-toolbar-group editor-tool-panel" data-tool-panel="callout" hidden>
               <button class="tb-btn" data-callout="tip" title="${getText('tip')}">💡</button>
               <button class="tb-btn" data-callout="info" title="${getText('info')}">ℹ️</button>
               <button class="tb-btn" data-callout="note" title="${getText('note')}">📝</button>
@@ -1514,10 +1516,7 @@ function renderEditor(node) {
               <button class="tb-btn" data-callout="danger" title="${getText('danger')}">⛔</button>
               <button class="tb-btn" data-callout="quote" title="${getText('quote')}">❝</button>
             </div>
-          </div>
-          <div class="editor-toolbar-group editor-toolbar-group-actions">
-            <span class="editor-toolbar-label">${getText('mediaTools')}</span>
-            <div class="editor-toolbar-buttons">
+            <div class="editor-toolbar-group editor-tool-panel" data-tool-panel="media" hidden>
               <button class="tb-btn" id="btnUploadMedia" title="${getText('uploadMedia')}">📷</button>
               <button class="tb-btn" id="btnPreview" title="${getText('preview')}">◉</button>
             </div>
@@ -1552,6 +1551,29 @@ function renderEditor(node) {
   };
   textarea.addEventListener('input', updateEditorMeta);
   updateEditorMeta();
+
+  const toolModes = [
+    { key: 'text', label: 'textTools' },
+    { key: 'callout', label: 'calloutTools' },
+    { key: 'media', label: 'mediaTools' }
+  ];
+  const toolModeButton = document.getElementById('editorToolMode');
+  const toolModeLabel = document.getElementById('editorToolModeLabel');
+  const toolPanels = contentEl.querySelectorAll('.editor-tool-panel');
+  let activeToolMode = 0;
+  const updateToolMode = () => {
+    const mode = toolModes[activeToolMode];
+    toolModeLabel.textContent = getText(mode.label);
+    toolModeButton.dataset.mode = mode.key;
+    toolPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.toolPanel !== mode.key;
+    });
+  };
+  toolModeButton.addEventListener('click', () => {
+    activeToolMode = (activeToolMode + 1) % toolModes.length;
+    updateToolMode();
+  });
+  updateToolMode();
 
   document.getElementById('btnUploadMedia').addEventListener('click', () => openMediaUploadModal(textarea));
   contentEl.querySelectorAll('.tb-btn').forEach(button => {

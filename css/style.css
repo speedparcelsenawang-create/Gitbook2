@@ -641,6 +641,7 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   flex: 0 0 auto;
 }
 .sidebar-header > .brand {
+  justify-content: center;
   padding: 0 10px 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);

@@ -647,7 +647,7 @@ function renderContent() {
   `;
 
   const pageBody = document.getElementById('pageBody');
-  const normalizedContent = normalizeLegacyMediaContent(node.content || '');
+  const normalizedContent = removeEphemeralMediaSources(normalizeLegacyMediaContent(node.content || ''));
   if (normalizedContent !== (node.content || '')) {
     node.content = normalizedContent;
     touchNode(node);
@@ -884,6 +884,28 @@ function normalizeLegacyMediaContent(text) {
 
     return snippets.length ? `\n${snippets.join('\n')}\n` : '';
   });
+}
+
+function removeEphemeralMediaSources(text) {
+  const source = String(text || '');
+  const ephemeralImages = parseMarkdownImages(source)
+    .filter((image) => /^blob:/i.test(image.src));
+  let cleaned = source;
+
+  [...ephemeralImages].reverse().forEach((image) => {
+    const lineStart = source.lastIndexOf('\n', image.start - 1) + 1;
+    const nextLineBreak = source.indexOf('\n', image.end);
+    const lineEnd = nextLineBreak === -1 ? source.length : nextLineBreak;
+    const lineContent = source.slice(lineStart, lineEnd).trim();
+    const imageContent = source.slice(image.start, image.end).trim();
+    const removeStart = lineContent === imageContent ? lineStart : image.start;
+    const removeEnd = lineContent === imageContent
+      ? (nextLineBreak === -1 ? source.length : nextLineBreak + 1)
+      : image.end;
+    cleaned = `${cleaned.slice(0, removeStart)}${cleaned.slice(removeEnd)}`;
+  });
+
+  return cleaned;
 }
 
 function buildMediaGalleryMarkup(items) {

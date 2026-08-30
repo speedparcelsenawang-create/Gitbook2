@@ -57,6 +57,14 @@ const translations = {
     prev: 'Sebelumnya',
     next: 'Seterusnya',
     markdownSupported: 'Markdown disokong',
+    editorHint: 'Tulis kandungan dalam Markdown dan gunakan toolbar sebagai jalan pintas.',
+    editorReady: 'Tiada perubahan belum disimpan',
+    editorUnsaved: 'Ada perubahan belum disimpan',
+    characters: 'aksara',
+    textTools: 'Teks',
+    blockTools: 'Blok',
+    calloutTools: 'Callout',
+    mediaTools: 'Media',
     title: 'Tajuk',
     bold: 'Tebal',
     italic: 'Italik',
@@ -158,6 +166,14 @@ const translations = {
     prev: 'Previous',
     next: 'Next',
     markdownSupported: 'Markdown supported',
+    editorHint: 'Write in Markdown or use the toolbar as a shortcut.',
+    editorReady: 'No unsaved changes',
+    editorUnsaved: 'Unsaved changes',
+    characters: 'characters',
+    textTools: 'Text',
+    blockTools: 'Blocks',
+    calloutTools: 'Callouts',
+    mediaTools: 'Media',
     title: 'Title',
     bold: 'Bold',
     italic: 'Italic',
@@ -1447,40 +1463,65 @@ function openMediaEditDialog(textarea, media) {
 
 function renderEditor(node) {
   contentEl.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-title">${escapeHtml(node.title)}</h1>
+    <div class="editor-page-heading">
+      <div>
+        <span class="editor-page-kicker">${getText('editContent')}</span>
+        <h1 class="page-title">${escapeHtml(node.title)}</h1>
+      </div>
+      <span class="editor-save-state" id="editorSaveState">${getText('editorReady')}</span>
     </div>
     <div class="editor-wrap">
       <div class="editor-panel">
         <div class="editor-header">
           <div class="editor-header-copy">
-            <span class="editor-kicker">Editor</span>
-            <h2>${escapeHtml(node.title)}</h2>
+            <span class="editor-kicker">${getText('markdownSupported')}</span>
+            <p>${getText('editorHint')}</p>
           </div>
-          <span class="editor-status-badge">${getText('markdownSupported')}</span>
+          <div class="editor-header-meta">
+            <span class="editor-status-badge">Markdown</span>
+            <span class="editor-character-count" id="editorCharacterCount">0 ${getText('characters')}</span>
+          </div>
         </div>
 
         <div class="editor-toolbar" role="toolbar" aria-label="Toolbar Markdown">
-          <button class="tb-btn" data-prefix="# " title="${getText('title')}">H</button>
-          <button class="tb-btn" data-prefix="**" data-suffix="**" title="${getText('bold')}"><strong>B</strong></button>
-          <button class="tb-btn" data-prefix="*" data-suffix="*" title="${getText('italic')}"><em>I</em></button>
-          <button class="tb-btn" data-prefix="- " title="${getText('list')}">☷</button>
-          <button class="tb-btn" data-snippet="- [ ] Tugas\n- [ ] Tugas lain\n" title="${getText('checklist')}">☑</button>
-          <button class="tb-btn" data-prefix="[" data-suffix="](url)" title="${getText('link')}">↗</button>
-          <button class="tb-btn" data-prefix="~~~\n" data-suffix="\n~~~" title="${getText('code')}">&lt;/&gt;</button>
-          <button class="tb-btn" data-snippet="| Tajuk | Nilai |\n| --- | --- |\n| Contoh | Data |\n" title="${getText('table')}">▦</button>
-          <span class="tb-sep"></span>
-          <button class="tb-btn" data-callout="tip" title="${getText('tip')}">💡</button>
-          <button class="tb-btn" data-callout="info" title="${getText('info')}">ℹ️</button>
-          <button class="tb-btn" data-callout="note" title="${getText('note')}">📝</button>
-          <button class="tb-btn" data-callout="warn" title="${getText('warning')}">⚠️</button>
-          <button class="tb-btn" data-callout="important" title="${getText('important')}">❗</button>
-          <button class="tb-btn" data-callout="success" title="${getText('success')}">✅</button>
-          <button class="tb-btn" data-callout="danger" title="${getText('danger')}">⛔</button>
-          <button class="tb-btn" data-callout="quote" title="${getText('quote')}">❝</button>
-          <span class="tb-sep"></span>
-          <button class="tb-btn" id="btnUploadMedia" title="${getText('uploadMedia')}">📷</button>
-          <button class="tb-btn" id="btnPreview" title="${getText('preview')}">◉</button>
+          <div class="editor-toolbar-group">
+            <span class="editor-toolbar-label">${getText('textTools')}</span>
+            <div class="editor-toolbar-buttons">
+              <button class="tb-btn" data-prefix="# " title="${getText('title')}">H</button>
+              <button class="tb-btn" data-prefix="**" data-suffix="**" title="${getText('bold')}"><strong>B</strong></button>
+              <button class="tb-btn" data-prefix="*" data-suffix="*" title="${getText('italic')}"><em>I</em></button>
+              <button class="tb-btn" data-prefix="[" data-suffix="](url)" title="${getText('link')}">↗</button>
+            </div>
+          </div>
+          <div class="editor-toolbar-group">
+            <span class="editor-toolbar-label">${getText('blockTools')}</span>
+            <div class="editor-toolbar-buttons">
+              <button class="tb-btn" data-prefix="- " title="${getText('list')}">☷</button>
+              <button class="tb-btn" data-snippet="- [ ] Tugas\n- [ ] Tugas lain\n" title="${getText('checklist')}">☑</button>
+              <button class="tb-btn" data-prefix="~~~\n" data-suffix="\n~~~" title="${getText('code')}">&lt;/&gt;</button>
+              <button class="tb-btn" data-snippet="| Tajuk | Nilai |\n| --- | --- |\n| Contoh | Data |\n" title="${getText('table')}">▦</button>
+            </div>
+          </div>
+          <div class="editor-toolbar-group editor-toolbar-group-callouts">
+            <span class="editor-toolbar-label">${getText('calloutTools')}</span>
+            <div class="editor-toolbar-buttons">
+              <button class="tb-btn" data-callout="tip" title="${getText('tip')}">💡</button>
+              <button class="tb-btn" data-callout="info" title="${getText('info')}">ℹ️</button>
+              <button class="tb-btn" data-callout="note" title="${getText('note')}">📝</button>
+              <button class="tb-btn" data-callout="warn" title="${getText('warning')}">⚠️</button>
+              <button class="tb-btn" data-callout="important" title="${getText('important')}">❗</button>
+              <button class="tb-btn" data-callout="success" title="${getText('success')}">✅</button>
+              <button class="tb-btn" data-callout="danger" title="${getText('danger')}">⛔</button>
+              <button class="tb-btn" data-callout="quote" title="${getText('quote')}">❝</button>
+            </div>
+          </div>
+          <div class="editor-toolbar-group editor-toolbar-group-actions">
+            <span class="editor-toolbar-label">${getText('mediaTools')}</span>
+            <div class="editor-toolbar-buttons">
+              <button class="tb-btn" id="btnUploadMedia" title="${getText('uploadMedia')}">📷</button>
+              <button class="tb-btn" id="btnPreview" title="${getText('preview')}">◉</button>
+            </div>
+          </div>
         </div>
 
         <div class="editor-body">
@@ -1498,7 +1539,19 @@ function renderEditor(node) {
     </div>
   `;
   const textarea = document.getElementById('editorTextarea');
-  textarea.addEventListener('input', () => renderMediaManager(textarea));
+  const editorStatus = document.getElementById('editorSaveState');
+  const characterCount = document.getElementById('editorCharacterCount');
+  const initialContent = node.content || '';
+  const updateEditorMeta = () => {
+    characterCount.textContent = `${textarea.value.length.toLocaleString()} ${getText('characters')}`;
+    editorStatus.textContent = textarea.value === initialContent
+      ? getText('editorReady')
+      : getText('editorUnsaved');
+    editorStatus.classList.toggle('is-unsaved', textarea.value !== initialContent);
+    renderMediaManager(textarea);
+  };
+  textarea.addEventListener('input', updateEditorMeta);
+  updateEditorMeta();
 
   document.getElementById('btnUploadMedia').addEventListener('click', () => openMediaUploadModal(textarea));
   contentEl.querySelectorAll('.tb-btn').forEach(button => {
@@ -1558,6 +1611,12 @@ function renderEditor(node) {
     touchNode(node);
     saveState();
     renderContent();
+  });
+  textarea.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+      event.preventDefault();
+      document.getElementById('btnSaveEdit').click();
+    }
   });
 }
 

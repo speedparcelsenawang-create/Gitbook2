@@ -5,6 +5,8 @@
 import '../css/style.css';
 import 'lightgallery.js/dist/css/lightgallery.css';
 import 'lightgallery.js/dist/js/lightgallery.js';
+import 'lg-thumbnail.js/dist/lg-thumbnail.js';
+import 'lg-zoom.js/dist/lg-zoom.js';
 import { marked } from 'marked';
 import { DEFAULT_BOOK_TITLE, normalizeBookTitle, normalizeDocumentState } from '../src/data-store.js';
 import { parseMarkdownImages, serializeMarkdownImage } from '../src/media-markdown.js';
@@ -1030,8 +1032,11 @@ function initMediaGallery(pageBody) {
         download: false,
         thumbnail: true,
         animateThumb: true,
-        showThumbByDefault: false,
+        showThumbByDefault: true,
+        toggleThumb: true,
         thumbWidth: 84,
+        thumbHeight: 64,
+        thumbMargin: 8,
         thumbContHeight: 84,
         zoom: true,
         scale: 1,

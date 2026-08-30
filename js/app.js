@@ -922,8 +922,11 @@ function buildMediaGalleryMarkup(items) {
           : '';
 
         if (item.type === 'video') {
+          const captionHtml = item.caption
+            ? `<p>${escapeHtml(item.caption)}</p>`
+            : '';
           return `
-            <a href='${src}' class='media-item' data-media-type='video'>
+            <a href='${src}' class='media-item' data-media-type='video' data-sub-html='${escapeAttribute(captionHtml)}' aria-label='${label}'>
               <video controls preload='metadata' src='${src}'></video>
               <span class='media-badge'>Video</span>
               ${moreOverlay}
@@ -931,8 +934,11 @@ function buildMediaGalleryMarkup(items) {
           `.replace(/\n\s+/g, ' ');
         }
 
+        const captionHtml = item.caption
+          ? `<p>${escapeHtml(item.caption)}</p>`
+          : '';
         return `
-          <a href='${src}' class='media-item' data-media-type='image' aria-label='${label}'>
+          <a href='${src}' class='media-item' data-media-type='image' data-sub-html='${escapeAttribute(captionHtml)}' aria-label='${label}'>
             <img src='${src}' alt='${label}' />
             ${moreOverlay}
           </a>
@@ -1020,15 +1026,35 @@ function initMediaGallery(pageBody) {
     gallery.dataset.lgInitialized = 'true';
     try {
       galleryFn(gallery, {
-        selector: 'a',
+        selector: '.media-item',
         download: false,
         thumbnail: true,
+        animateThumb: true,
+        showThumbByDefault: false,
+        thumbWidth: 84,
+        thumbContHeight: 84,
         zoom: true,
+        scale: 1,
+        actualSize: true,
         fullScreen: true,
-        autoplayVideoOnSlide: true,
+        autoplayVideoOnSlide: false,
+        autoplayControls: false,
+        share: false,
+        mousewheel: true,
+        enableDrag: true,
+        enableSwipe: true,
+        swipeThreshold: 50,
         hideControlOnEnd: false,
         loop: false,
-        closable: true
+        closable: true,
+        getCaptionFromTitleOrAlt: false,
+        subHtmlSelectorRelative: true,
+        addClass: 'recipebook-lightbox',
+        mobileSettings: {
+          controls: true,
+          showCloseIcon: true,
+          download: false
+        }
       });
     } catch (error) {
       console.warn('Unable to initialize LightGallery', error);

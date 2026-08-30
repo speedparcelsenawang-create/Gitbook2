@@ -1762,6 +1762,15 @@ function arrangeContentLayout() {
   mainShell.className = 'main-shell';
   layout.appendChild(mainShell);
   mainShell.append(topbar, content);
+
+  const brand = topbar.querySelector('.brand');
+  const topbarLeft = topbar.querySelector('.topbar-left');
+  const sidebarHeader = document.querySelector('.sidebar-header');
+  const sidebarSearch = sidebarHeader?.querySelector('.sidebar-search');
+  if (brand && topbarLeft && sidebarHeader && sidebarSearch) {
+    sidebarHeader.insertBefore(brand, sidebarSearch);
+    topbarLeft.classList.add('brand-moved');
+  }
 }
 
 async function init() {

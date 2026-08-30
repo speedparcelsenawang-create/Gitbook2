@@ -515,6 +515,10 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   width: 280px;
   flex-shrink: 0;
   height: 100vh;
+  height: 100dvh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);

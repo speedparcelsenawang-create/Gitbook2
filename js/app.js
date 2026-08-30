@@ -1004,7 +1004,21 @@ function openMediaUploadModal(textarea) {
       </div>
       <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
       <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
-      <p class="media-edit-status" id="mediaUploadStatus"></p>
+      <div class="media-modal-divider"></div>
+      <div class="media-modal-url-row">
+        <div class="media-insert-field">
+          <label for="mediaUrlInput">${getText('imageUrl')}</label>
+          <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
+        </div>
+        <div class="media-insert-field">
+          <label for="mediaNameInput">${getText('imageName')}</label>
+          <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+        </div>
+        <button type="button" class="btn btn-ghost" id="btnInsertImage">＋ ${getText('insertImage')}</button>
+      </div>
+      <p class="media-status" id="mediaStatus" aria-live="polite"></p>
+      <div class="media-modal-list-heading">${getText('mediaManager')}</div>
+      <div class="media-list media-modal-list" id="mediaList"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="mediaUploadCancel">${getText('cancel')}</button>
         <button type="button" class="btn btn-primary" id="mediaUploadSubmit">📤 ${getText('upload')}</button>
@@ -1018,8 +1032,10 @@ function openMediaUploadModal(textarea) {
   const fileStatus = backdrop.querySelector('#mediaUploadFileStatus');
   const preview = backdrop.querySelector('#mediaUploadPreview');
   const captionInput = backdrop.querySelector('#mediaUploadCaption');
-  const status = backdrop.querySelector('#mediaUploadStatus');
+  const status = backdrop.querySelector('#mediaStatus');
   const submitButton = backdrop.querySelector('#mediaUploadSubmit');
+  const urlInput = backdrop.querySelector('#mediaUrlInput');
+  const nameInput = backdrop.querySelector('#mediaNameInput');
   let selectedFile = null;
   let previewUrl = '';
 
@@ -1031,6 +1047,22 @@ function openMediaUploadModal(textarea) {
   backdrop.querySelector('#mediaUploadCancel').addEventListener('click', close);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) close();
+  });
+  renderMediaManager(textarea);
+  backdrop.querySelector('#btnInsertImage').addEventListener('click', () => {
+    const url = urlInput.value.trim();
+    if (!isValidImageSource(url)) {
+      setMediaStatus(getText('invalidImageUrl'), true);
+      urlInput.focus();
+      return;
+    }
+
+    const caption = nameInput.value.trim() || getText('defaultImageCaption');
+    insertTextAtSelection(textarea, `\n![${safeMarkdownCaption(caption)}](${url})\n`);
+    urlInput.value = '';
+    nameInput.value = '';
+    setMediaStatus(getText('imageReady'));
+    renderMediaManager(textarea);
   });
   chooseButton.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
@@ -1263,28 +1295,6 @@ function renderEditor(node) {
           <button class="tb-btn" id="btnPreview" title="${getText('preview')}">◉</button>
         </div>
 
-        <section class="media-manager" id="mediaManager" aria-labelledby="mediaManagerTitle">
-          <div class="media-manager-header">
-            <div>
-              <h3 id="mediaManagerTitle">${getText('mediaManager')}</h3>
-              <p>${getText('mediaManagerHint')}</p>
-            </div>
-          </div>
-          <div class="media-insert-row">
-            <div class="media-insert-field">
-              <label for="mediaUrlInput">${getText('imageUrl')}</label>
-              <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
-            </div>
-            <div class="media-insert-field media-name-field">
-              <label for="mediaNameInput">${getText('imageName')}</label>
-              <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
-            </div>
-            <button type="button" class="btn btn-primary media-insert-button" id="btnInsertImage">＋ ${getText('insertImage')}</button>
-            <button type="button" class="btn btn-ghost media-upload-button" id="btnUploadImage">📷 ${getText('uploadMedia')}</button>
-          </div>
-          <p class="media-status" id="mediaStatus" aria-live="polite"></p>
-          <div class="media-list" id="mediaList"></div>
-        </section>
         <div class="editor-body">
           <textarea class="editor-textarea" id="editorTextarea" spellcheck="false">${escapeHtml(node.content || '')}</textarea>
         </div>
@@ -1300,27 +1310,9 @@ function renderEditor(node) {
     </div>
   `;
   const textarea = document.getElementById('editorTextarea');
-  renderMediaManager(textarea);
   textarea.addEventListener('input', () => renderMediaManager(textarea));
 
   document.getElementById('btnUploadMedia').addEventListener('click', () => openMediaUploadModal(textarea));
-  document.getElementById('btnUploadImage').addEventListener('click', () => openMediaUploadModal(textarea));
-  document.getElementById('btnInsertImage').addEventListener('click', () => {
-    const urlInput = document.getElementById('mediaUrlInput');
-    const nameInput = document.getElementById('mediaNameInput');
-    const url = urlInput.value.trim();
-    if (!isValidImageSource(url)) {
-      setMediaStatus(getText('invalidImageUrl'), true);
-      urlInput.focus();
-      return;
-    }
-
-    const caption = nameInput.value.trim() || getText('defaultImageCaption');
-    insertTextAtSelection(textarea, `\n![${safeMarkdownCaption(caption)}](${url})\n`);
-    urlInput.value = '';
-    nameInput.value = '';
-    setMediaStatus(getText('imageReady'));
-  });
   contentEl.querySelectorAll('.tb-btn').forEach(button => {
     button.addEventListener('click', () => {
       const start = textarea.selectionStart;

@@ -613,7 +613,7 @@ function renderMarkdown(text) {
     return `${prefix}<div class="callout callout-${variant}"><div class="callout-header"><span class="callout-icon">${iconMap[variant] || 'ℹ️'}</span><span>${labelMap[variant] || 'Info'}</span></div><div class="callout-body">${html}</div></div>`;
   });
 
-  return marked.parse(normalized);
+  return marked.parse(groupConsecutiveMarkdownImages(normalized));
 }
 
 function enhanceDocumentPage(pageBody) {
@@ -711,40 +711,88 @@ function normalizeLegacyMediaContent(text) {
 }
 
 function buildMediaGalleryMarkup(items) {
-  const isCollapsed = items.length > 4;
-  const visibleItems = items.slice(0, 4);
+  const hiddenCount = Math.max(0, items.length - 3);
+  const columnCount = Math.min(items.length, 3);
 
   const galleryHtml = `
-    <div class="media-gallery ${isCollapsed ? 'is-collapsed' : ''}" data-gallery-limit="4">
-      ${items.map(item => {
+    <div class="media-gallery media-gallery-${columnCount}" data-gallery-limit="3">
+      ${items.map((item, index) => {
         const src = escapeAttribute(item.src);
-        const label = escapeAttribute(item.title || 'Media');
+        const label = escapeAttribute(item.caption || item.title || 'Media');
+        const moreOverlay = index === 2 && hiddenCount
+          ? `<span class="media-more-overlay">+${hiddenCount} more</span>`
+          : '';
 
         if (item.type === 'video') {
           return `
             <a href='${src}' class='media-item' data-media-type='video'>
               <video controls preload='metadata' src='${src}'></video>
               <span class='media-badge'>Video</span>
+              ${moreOverlay}
             </a>
           `.replace(/\n\s+/g, ' ');
         }
 
         return `
-          <a href='${src}' class='media-item' data-media-type='image'>
+          <a href='${src}' class='media-item' data-media-type='image' aria-label='${label}'>
             <img src='${src}' alt='${label}' />
+            ${moreOverlay}
           </a>
         `.replace(/\n\s+/g, ' ');
       }).join('')}
     </div>
-    ${isCollapsed ? `<button class="media-gallery-toggle" type="button">${getText('seeMore')}</button>` : ''}
   `;
 
   return galleryHtml.trim();
 }
 
+function groupConsecutiveMarkdownImages(text) {
+  const source = String(text || '');
+  const images = parseMarkdownImages(source);
+  if (images.length < 2) return source;
+
+  const isOwnLine = (image) => {
+    const lineStart = source.lastIndexOf('\n', image.start - 1) + 1;
+    const lineBreak = source.indexOf('\n', image.end);
+    const lineEnd = lineBreak === -1 ? source.length : lineBreak;
+    return !source.slice(lineStart, image.start).trim()
+      && !source.slice(image.end, lineEnd).trim();
+  };
+
+  const groups = [];
+  let current = [];
+  images.forEach((image) => {
+    const previous = current[current.length - 1];
+    const separatedOnlyByWhitespace = previous
+      && /^\s*$/.test(source.slice(previous.end, image.start));
+    if (isOwnLine(image) && (!previous || separatedOnlyByWhitespace)) {
+      current.push(image);
+      return;
+    }
+    if (current.length > 1) groups.push(current);
+    current = isOwnLine(image) ? [image] : [];
+  });
+  if (current.length > 1) groups.push(current);
+  if (!groups.length) return source;
+
+  let cursor = 0;
+  let output = '';
+  groups.forEach((group) => {
+    output += source.slice(cursor, group[0].start);
+    output += `\n${buildMediaGalleryMarkup(group.map((image) => ({
+      type: 'image',
+      src: image.src,
+      caption: image.caption,
+      title: image.title
+    })))}\n`;
+    cursor = group[group.length - 1].end;
+  });
+  return output + source.slice(cursor);
+}
+
 function initMediaGallery(pageBody) {
   const galleries = pageBody.querySelectorAll('.media-gallery');
-  const galleryFn = window.lightGallery || window.Lightgallery;
+  const galleryFn = window.Lightgallery || window.lightGallery;
   if (!galleryFn || !galleries.length) return;
 
   galleries.forEach((gallery) => {
@@ -767,19 +815,6 @@ function initMediaGallery(pageBody) {
     }
   });
 
-  const toggles = pageBody.querySelectorAll('.media-gallery-toggle');
-  toggles.forEach((toggle) => {
-    toggle.addEventListener('click', () => {
-      const gallery = toggle.previousElementSibling;
-      if (!gallery) return;
-      const expanded = gallery.classList.toggle('is-expanded');
-      const hiddenItems = gallery.querySelectorAll('.media-item:nth-child(n + 5)');
-      hiddenItems.forEach((item) => {
-        item.style.display = expanded ? 'block' : 'none';
-      });
-      toggle.textContent = expanded ? getText('seeLess') : getText('seeMore');
-    });
-  });
 }
 
 function parseEditorImages(text) {

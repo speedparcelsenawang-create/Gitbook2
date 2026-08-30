@@ -883,10 +883,12 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
 .markdown-body img { max-width: 100%; border-radius: 8px; }
 .media-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 1.5em 0;
 }
+.media-gallery.media-gallery-1 { grid-template-columns: minmax(0, 1fr); }
+.media-gallery.media-gallery-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .media-gallery .media-item {
   display: block;
   position: relative;
@@ -895,6 +897,7 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   border: 1px solid var(--border);
   background: var(--bg-soft);
   text-decoration: none;
+  cursor: zoom-in;
 }
 .media-gallery .media-item img,
 .media-gallery .media-item video {
@@ -903,12 +906,14 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   height: 180px;
   object-fit: cover;
   border-radius: 10px;
+  transition: transform .2s ease;
 }
-.media-gallery.is-collapsed .media-item:nth-child(n + 5) {
+.media-gallery .media-item:hover img,
+.media-gallery .media-item:hover video {
+  transform: scale(1.025);
+}
+.media-gallery .media-item:nth-child(n + 4) {
   display: none;
-}
-.media-gallery.is-expanded .media-item:nth-child(n + 5) {
-  display: block;
 }
 .media-badge {
   position: absolute;
@@ -923,18 +928,20 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   padding: 4px 7px;
   border-radius: 999px;
 }
-.media-gallery-toggle {
-  display: inline-flex;
+.media-more-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 1em;
+  background: rgba(15, 23, 42, .62);
+  color: #fff;
+  font-size: clamp(18px, 3vw, 28px);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .28);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 .markdown-body video {
   max-width: 100%;

@@ -18,6 +18,13 @@ const LANG_KEY = 'docbook_language';
 const translations = {
   ms: {
     settings: 'Tetapan',
+    share: 'Kongsi',
+    sharePage: 'Kongsi halaman',
+    shareHint: 'Salin pautan halaman ini untuk dikongsi.',
+    shareLink: 'Pautan halaman',
+    copyLink: 'Salin pautan',
+    copiedLink: 'Pautan disalin',
+    nativeShare: 'Kongsi melalui peranti',
     general: 'Umum',
     appearance: 'Penampilan',
     generalDescription: 'Urus identiti dan bahasa RecipeBook anda.',
@@ -131,6 +138,13 @@ const translations = {
   },
   en: {
     settings: 'Settings',
+    share: 'Share',
+    sharePage: 'Share page',
+    shareHint: 'Copy this page link to share it.',
+    shareLink: 'Page link',
+    copyLink: 'Copy link',
+    copiedLink: 'Link copied',
+    nativeShare: 'Share from device',
     general: 'General',
     appearance: 'Appearance',
     generalDescription: 'Manage your RecipeBook identity and language.',
@@ -312,7 +326,28 @@ function touchNode(node) {
   if (node) node.updatedAt = Date.now();
 }
 
+function getSharedPageId() {
+  const queryPageId = new URLSearchParams(window.location.search).get('page');
+  if (queryPageId) return queryPageId;
+  return new URLSearchParams(window.location.hash.slice(1)).get('page');
+}
+
+function syncSharedPageUrl(pageId) {
+  if (!pageId || !window.history?.replaceState) return;
+  const url = new URL(window.location.href);
+  url.hash = new URLSearchParams({ page: pageId }).toString();
+  window.history.replaceState(null, '', url);
+}
+
 async function loadState() {
+  const applyLoadedState = (normalized) => {
+    state.pages = normalized.pages;
+    state.activeId = normalized.activeId;
+    state.bookTitle = normalized.bookTitle;
+    const sharedPageId = getSharedPageId();
+    if (sharedPageId && findNode(sharedPageId, state.pages)) state.activeId = sharedPageId;
+  };
+
   try {
     const response = await fetch('/api/docbook', {
       headers: { Accept: 'application/json' }
@@ -321,9 +356,7 @@ async function loadState() {
     if (response.ok) {
       const parsed = await response.json();
       const normalized = normalizeDocumentState(parsed);
-      state.pages = normalized.pages;
-      state.activeId = normalized.activeId;
-      state.bookTitle = normalized.bookTitle;
+      applyLoadedState(normalized);
       if (ensurePageTimestamps(state.pages)) saveState();
       return;
     }
@@ -336,9 +369,7 @@ async function loadState() {
     try {
       const parsed = JSON.parse(raw);
       const normalized = normalizeDocumentState(parsed);
-      state.pages = normalized.pages;
-      state.activeId = normalized.activeId;
-      state.bookTitle = normalized.bookTitle;
+      applyLoadedState(normalized);
       if (ensurePageTimestamps(state.pages)) saveState();
       return;
     } catch (error) {
@@ -347,9 +378,7 @@ async function loadState() {
   }
 
   const normalized = normalizeDocumentState({ pages: null, activeId: null, bookTitle: null });
-  state.pages = normalized.pages;
-  state.activeId = normalized.activeId;
-  state.bookTitle = normalized.bookTitle;
+  applyLoadedState(normalized);
   ensurePageTimestamps(state.pages);
   saveState();
 }
@@ -585,6 +614,7 @@ function renderContent() {
     return;
   }
 
+  syncSharedPageUrl(node.id);
   const path = findPath(node.id) || [node];
   const allPages = flattenSearch();
   const currentIndex = allPages.findIndex(page => page.id === node.id);
@@ -1738,6 +1768,9 @@ function applyLanguage(lang) {
   const settingsBtn = document.getElementById('settingsButton');
   if (settingsBtn) settingsBtn.title = getText('settings');
   settingsBtn?.setAttribute('aria-label', getText('settings'));
+  const shareBtn = document.getElementById('shareButton');
+  if (shareBtn) shareBtn.title = getText('share');
+  shareBtn?.setAttribute('aria-label', getText('share'));
 
   const addRootPageBtn = document.getElementById('addRootPage');
   if (addRootPageBtn) {
@@ -1925,6 +1958,107 @@ function initSettings() {
   if (!btn) return;
 
   btn.addEventListener('click', openSettingsPanel);
+}
+
+let closeSharePopover = null;
+
+function openSharePopover() {
+  closeSharePopover?.();
+  const node = state.activeId ? findNode(state.activeId) : null;
+  const shareButton = document.getElementById('shareButton');
+  if (!node || !shareButton) return;
+
+  syncSharedPageUrl(node.id);
+  const shareUrl = window.location.href;
+  const popover = document.createElement('div');
+  popover.id = 'sharePopover';
+  popover.className = 'share-popover';
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-labelledby', 'sharePopoverTitle');
+  popover.innerHTML = `
+    <div class="share-popover-header">
+      <div class="share-popover-heading">
+        <span class="share-popover-icon" aria-hidden="true">↗</span>
+        <div>
+          <h3 id="sharePopoverTitle">${escapeHtml(getText('sharePage'))}</h3>
+          <p>${escapeHtml(getText('shareHint'))}</p>
+        </div>
+      </div>
+      <button type="button" class="icon-btn share-close" aria-label="${escapeAttribute(getText('close'))}">×</button>
+    </div>
+    <label class="share-link-label" for="shareLinkInput">${escapeHtml(getText('shareLink'))}</label>
+    <div class="share-link-row">
+      <input id="shareLinkInput" type="text" readonly value="${escapeAttribute(shareUrl)}">
+      <button type="button" class="btn btn-primary" id="copyShareLink">${escapeHtml(getText('copyLink'))}</button>
+    </div>
+    <button type="button" class="btn btn-ghost share-native-button" id="nativeShareButton">${escapeHtml(getText('nativeShare'))}</button>
+    <p class="share-status" id="shareStatus" aria-live="polite"></p>
+  `;
+  document.body.appendChild(popover);
+
+  const linkInput = popover.querySelector('#shareLinkInput');
+  const copyButton = popover.querySelector('#copyShareLink');
+  const nativeShareButton = popover.querySelector('#nativeShareButton');
+  const status = popover.querySelector('#shareStatus');
+  const closeButton = popover.querySelector('.share-close');
+
+  const close = () => {
+    popover.remove();
+    document.removeEventListener('pointerdown', handleOutsideClick);
+    document.removeEventListener('keydown', handleEscape);
+    if (closeSharePopover === close) closeSharePopover = null;
+  };
+  const handleOutsideClick = (event) => {
+    if (!popover.contains(event.target) && event.target !== shareButton) close();
+  };
+  const handleEscape = (event) => {
+    if (event.key === 'Escape') close();
+  };
+  closeSharePopover = close;
+  closeButton.addEventListener('click', close);
+  linkInput.addEventListener('focus', () => linkInput.select());
+  copyButton.addEventListener('click', async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        linkInput.focus();
+        linkInput.select();
+        if (!document.execCommand('copy')) throw new Error('Copy not supported');
+      }
+      status.textContent = getText('copiedLink');
+      copyButton.textContent = getText('copiedLink');
+      window.setTimeout(() => {
+        if (document.body.contains(copyButton)) copyButton.textContent = getText('copyLink');
+      }, 1800);
+    } catch {
+      linkInput.focus();
+      linkInput.select();
+      status.textContent = getText('shareLink');
+    }
+  });
+  nativeShareButton.hidden = typeof navigator.share !== 'function';
+  nativeShareButton.addEventListener('click', async () => {
+    try {
+      await navigator.share({ title: node.title, text: getText('sharePage'), url: shareUrl });
+      status.textContent = getText('copiedLink');
+    } catch (error) {
+      if (error?.name !== 'AbortError') status.textContent = getText('shareLink');
+    }
+  });
+  document.addEventListener('pointerdown', handleOutsideClick);
+  document.addEventListener('keydown', handleEscape);
+  linkInput.focus();
+  linkInput.select();
+}
+
+function initShare() {
+  const btn = document.getElementById('shareButton');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (closeSharePopover) closeSharePopover();
+    else openSharePopover();
+  });
 }
 
 /* ---------- Edit mode toggle ---------- */
@@ -2179,6 +2313,7 @@ async function init() {
   initTheme();
   initEditMode();
   initSettings();
+  initShare();
   initSidebarToggle();
   initAddRoot();
   initDataTransfer();

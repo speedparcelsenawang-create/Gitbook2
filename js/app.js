@@ -1688,6 +1688,7 @@ function initEditMode() {
 }
 
 function setEditMode(on) {
+  const wasInEditor = !!document.querySelector('.editor-wrap');
   document.body.classList.toggle('edit-mode', on);
   const editBtn = document.getElementById('editModeToggle');
   if (editBtn) editBtn.classList.toggle('active', on);
@@ -1696,6 +1697,11 @@ function setEditMode(on) {
   localStorage.setItem(EDIT_KEY, on ? 'true' : 'false');
   syncSettingsPanel();
   const node = state.activeId ? findNode(state.activeId) : null;
+  if (!on) {
+    document.querySelectorAll('.modal-backdrop').forEach((modal) => modal.remove());
+    if (wasInEditor || node) renderContent();
+    return;
+  }
   if (node) applyEditModeToTitle(node);
 }
 

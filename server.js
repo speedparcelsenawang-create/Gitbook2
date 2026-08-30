@@ -64,6 +64,9 @@ app.get('/api/docbook', async (_req, res) => {
 
 app.post('/api/docbook', async (req, res) => {
   try {
+    if (!hasTrustedOrigin(req)) {
+      return res.status(403).json({ error: 'Permintaan tidak dibenarkan.' });
+    }
     const state = normalizeDocumentState(req.body || {});
     await pool.query(
       `INSERT INTO app_state (id, data) VALUES ($1, $2)
@@ -115,7 +118,11 @@ function hasTrustedOrigin(req) {
   const origin = req.get('origin');
   if (!origin) return false;
   try {
-    return new URL(origin).origin === `${req.protocol}://${req.get('host')}`;
+    if (req.get('sec-fetch-site') === 'same-origin') return true;
+    const originHost = new URL(origin).host;
+    const directHost = req.get('host');
+    const forwardedHost = req.get('x-forwarded-host')?.split(',')[0]?.trim();
+    return originHost === directHost || originHost === forwardedHost;
   } catch {
     return false;
   }

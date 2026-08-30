@@ -73,7 +73,7 @@ const translations = {
     success: 'Success',
     danger: 'Danger',
     quote: 'Quote',
-    uploadMedia: 'Muat naik gambar/video',
+    uploadMedia: 'Muat naik gambar',
     imageUrl: 'URL imej',
     imageName: 'Nama imej',
     defaultImageCaption: 'Imej',
@@ -98,7 +98,7 @@ const translations = {
     fileSelected: 'Fail dipilih',
     uploadingImage: 'Sedang memuat naik imej ke ImgBB…',
     uploadMediaTitle: 'Muat naik media',
-    uploadMediaHint: 'Pilih fail atau masukkan URL image untuk dimasukkan ke halaman.',
+    uploadMediaHint: 'Pilih fail image atau masukkan URL image untuk dimasukkan ke halaman.',
     selectFile: 'Pilih fail',
     noFileSelected: 'Belum ada fail dipilih.',
     noMediaSelected: 'Pilih fail atau masukkan URL image.',
@@ -174,7 +174,7 @@ const translations = {
     success: 'Success',
     danger: 'Danger',
     quote: 'Quote',
-    uploadMedia: 'Upload image/video',
+    uploadMedia: 'Upload image',
     imageUrl: 'Image URL',
     imageName: 'Image name',
     defaultImageCaption: 'Image',
@@ -199,7 +199,7 @@ const translations = {
     fileSelected: 'File selected',
     uploadingImage: 'Uploading image to ImgBB…',
     uploadMediaTitle: 'Upload media',
-    uploadMediaHint: 'Choose a file or enter an image URL to add to this page.',
+    uploadMediaHint: 'Choose an image file or enter an image URL to add to this page.',
     selectFile: 'Choose file',
     noFileSelected: 'No file selected yet.',
     noMediaSelected: 'Choose a file or enter an image URL.',
@@ -330,23 +330,34 @@ async function loadState() {
   saveState();
 }
 
+let remoteSaveQueue = Promise.resolve();
+
 function saveState() {
   const payload = {
     pages: state.pages,
     activeId: state.activeId,
     bookTitle: normalizeBookTitle(state.bookTitle)
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  const serialized = JSON.stringify(payload);
+  localStorage.setItem(STORAGE_KEY, serialized);
 
-  fetch('/api/docbook', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  }).catch(() => {
-    // Ignore remote save failures and keep local fallback working.
-  });
+  remoteSaveQueue = remoteSaveQueue
+    .catch(() => undefined)
+    .then(() => fetch('/api/docbook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: serialized
+    }))
+    .then((response) => {
+      if (!response.ok) throw new Error(`Remote save failed with ${response.status}`);
+    })
+    .catch((error) => {
+      console.warn('Remote save unavailable; local copy remains saved.', error);
+    });
+
+  return remoteSaveQueue;
 }
 
 /* ---------- Tree helpers ---------- */
@@ -602,6 +613,44 @@ function renderContent() {
   applyEditModeToTitle(node);
 }
 
+function sanitizeRenderedHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  template.content
+    .querySelectorAll('script, style, iframe, object, embed, form, input, button, textarea, select, link, meta, base, svg, math')
+    .forEach((element) => element.remove());
+
+  template.content.querySelectorAll('*').forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith('on') || name === 'style' || name === 'srcdoc') {
+        element.removeAttribute(attribute.name);
+      }
+    });
+
+    ['href', 'src', 'poster'].forEach((attributeName) => {
+      const value = element.getAttribute(attributeName);
+      if (!value) return;
+      const trimmed = value.trim();
+      if (trimmed.startsWith('#')) return;
+      try {
+        const url = new URL(trimmed, window.location.href);
+        const allowedProtocol = ['http:', 'https:', 'mailto:', 'tel:', 'blob:'].includes(url.protocol)
+          || (url.protocol === 'data:' && /^data:image\//i.test(trimmed));
+        if (!allowedProtocol) element.removeAttribute(attributeName);
+      } catch {
+        element.removeAttribute(attributeName);
+      }
+    });
+
+    if (element.tagName === 'A' && element.getAttribute('target') === '_blank') {
+      element.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+
+  return template.innerHTML;
+}
+
 function renderMarkdown(text) {
   const normalized = (text || '').replace(/(^|\n)(> \[!([A-Z]+)\][^\n]*(?:\n>.*)*)/gi, (match, prefix, block, label) => {
     const rawType = (label || '').trim().toLowerCase();
@@ -651,7 +700,7 @@ function renderMarkdown(text) {
     return `${prefix}<div class="callout callout-${variant}"><div class="callout-header"><span class="callout-icon">${iconMap[variant] || 'ℹ️'}</span><span>${labelMap[variant] || 'Info'}</span></div><div class="callout-body">${html}</div></div>`;
   });
 
-  return marked.parse(groupConsecutiveMarkdownImages(normalized));
+  return sanitizeRenderedHtml(marked.parse(groupConsecutiveMarkdownImages(normalized)));
 }
 
 function enhanceDocumentPage(pageBody) {
@@ -817,7 +866,29 @@ function groupConsecutiveMarkdownImages(text) {
   const images = parseMarkdownImages(source);
   if (images.length < 2) return source;
 
+  const fencedCodeRanges = [];
+  let openFence = null;
+  let offset = 0;
+  source.split('\n').forEach((line) => {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      const token = marker[1];
+      if (!openFence) {
+        openFence = { character: token[0], length: token.length, start: offset };
+      } else if (token[0] === openFence.character && token.length >= openFence.length) {
+        fencedCodeRanges.push({ start: openFence.start, end: offset + line.length });
+        openFence = null;
+      }
+    }
+    offset += line.length + 1;
+  });
+  if (openFence) fencedCodeRanges.push({ start: openFence.start, end: source.length });
+  const isInsideFencedCode = (position) => fencedCodeRanges.some(
+    (range) => position >= range.start && position <= range.end
+  );
+
   const isOwnLine = (image) => {
+    if (isInsideFencedCode(image.start)) return false;
     const lineStart = source.lastIndexOf('\n', image.start - 1) + 1;
     const lineBreak = source.indexOf('\n', image.end);
     const lineEnd = lineBreak === -1 ? source.length : lineBreak;
@@ -1055,8 +1126,7 @@ function setMediaStatus(message, isError = false) {
 async function handleMediaUpload(files, textarea, captionOverride = '') {
   const selectedFiles = [...(files || [])];
   const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
-  const videoFiles = selectedFiles.filter(file => file.type.startsWith('video/'));
-  if (!imageFiles.length && !videoFiles.length) {
+  if (!imageFiles.length) {
     setMediaStatus(getText('invalidImageFile'), true);
     return false;
   }
@@ -1069,19 +1139,7 @@ async function handleMediaUpload(files, textarea, captionOverride = '') {
       const caption = captionOverride || imageCaptionFromFilename(file.name);
       imageSnippets.push(`![${safeMarkdownCaption(caption)}](${src})`);
     }
-    const videoItems = videoFiles.map((file) => ({
-      type: 'video',
-      src: URL.createObjectURL(file),
-      title: file.name,
-      mimeType: file.type
-    }));
-    const videoMarkup = videoItems.length ? buildMediaGalleryMarkup(videoItems).trim() : '';
-    const snippets = [
-      imageSnippets.join('\n'),
-      videoMarkup
-    ].filter(Boolean);
-
-    insertTextAtSelection(textarea, `\n${snippets.join('\n')}\n`);
+    insertTextAtSelection(textarea, `\n${imageSnippets.join('\n')}\n`);
     setMediaStatus(getText('imageReady'));
     return true;
   } catch (error) {
@@ -1116,7 +1174,7 @@ function openMediaUploadModal(textarea) {
         <div class="media-upload-file-row">
           <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
           <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
-          <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
+          <input type="file" id="mediaUploadFileInput" accept="image/*" hidden>
         </div>
         <div class="media-upload-or"><span>${getText('or')}</span></div>
         <label class="media-field-label" for="mediaUploadUrl">${getText('imageUrl')}</label>
@@ -1190,9 +1248,7 @@ function openMediaUploadModal(textarea) {
 
     fileStatus.textContent = `${getText('fileSelected')}: ${selectedFile.name}`;
     previewUrl = URL.createObjectURL(selectedFile);
-    if (selectedFile.type.startsWith('video/')) {
-      preview.innerHTML = `<video src="${escapeAttribute(previewUrl)}" controls muted></video>`;
-    } else if (selectedFile.type.startsWith('image/')) {
+    if (selectedFile.type.startsWith('image/')) {
       preview.innerHTML = `<img src="${escapeAttribute(previewUrl)}" alt="${escapeAttribute(selectedFile.name)}">`;
     }
     preview.hidden = false;
@@ -1230,9 +1286,7 @@ function openMediaUploadModal(textarea) {
       close();
       return;
     }
-    status.textContent = selectedFile.type.startsWith('image/')
-      ? getText('uploadingImage')
-      : getText('uploadMediaTitle');
+    status.textContent = getText('uploadingImage');
     const uploaded = await handleMediaUpload([selectedFile], textarea, captionInput.value.trim());
     if (uploaded) {
       close();
@@ -1483,15 +1537,20 @@ function renderEditor(node) {
       textarea.focus();
     });
   });
-  document.getElementById('btnPreview').addEventListener('click', () => {
+  const previewButton = document.getElementById('btnPreview');
+  previewButton.addEventListener('click', () => {
+    if (previewButton.dataset.previewing === 'true') {
+      renderEditor(node);
+      return;
+    }
     const preview = document.createElement('div');
     preview.className = 'markdown-body editor-preview';
     preview.innerHTML = renderMarkdown(textarea.value);
-    document.getElementById('mediaManager').hidden = true;
     textarea.replaceWith(preview);
-    document.getElementById('btnPreview').textContent = '✎';
-    document.getElementById('btnPreview').title = getText('backToEditor');
-    document.getElementById('btnPreview').onclick = () => renderEditor(node);
+    initMediaGallery(preview);
+    previewButton.dataset.previewing = 'true';
+    previewButton.textContent = '✎';
+    previewButton.title = getText('backToEditor');
   });
   document.getElementById('btnCancelEdit').addEventListener('click', renderContent);
   document.getElementById('btnSaveEdit').addEventListener('click', () => {
@@ -1800,6 +1859,7 @@ function setEditMode(on) {
   syncSettingsPanel();
   const node = state.activeId ? findNode(state.activeId) : null;
   if (!on) {
+    document.querySelector('#uploadPasswordCancel')?.click();
     document.querySelectorAll('.modal-backdrop').forEach((modal) => modal.remove());
     if (wasInEditor || node) renderContent();
     return;
@@ -1950,8 +2010,14 @@ function initDataTransfer() {
       try {
         const imported = JSON.parse(reader.result);
         if (!Array.isArray(imported)) throw new Error('Format tidak sah');
-        state.pages = imported;
-        state.activeId = flattenSearch()[0]?.id || null;
+        const normalized = normalizeDocumentState({
+          pages: imported,
+          activeId: imported[0]?.id,
+          bookTitle: state.bookTitle
+        });
+        state.pages = normalized.pages;
+        state.activeId = normalized.activeId;
+        ensurePageTimestamps(state.pages);
         saveState();
         renderTree();
         renderContent();

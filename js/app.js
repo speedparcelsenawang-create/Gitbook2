@@ -49,7 +49,11 @@ const translations = {
     noPageSelected: 'Tiada halaman dipilih',
     noPageSelectedHint: 'Pilih halaman dari sidebar, atau tambah menu baharu dalam Edit Mode.',
     editContent: 'Edit Kandungan',
-    lastUpdated: 'Terakhir dikemas kini secara tempatan',
+    lastUpdatedJustNow: 'Terakhir dikemas kini sebentar tadi',
+    lastUpdatedMinutes: 'Terakhir dikemas kini {count} minit yang lalu',
+    lastUpdatedHours: 'Terakhir dikemas kini {count} jam yang lalu',
+    lastUpdatedDays: 'Terakhir dikemas kini {count} hari yang lalu',
+    lastUpdatedDate: 'Terakhir dikemas kini {date}',
     prev: 'Sebelumnya',
     next: 'Seterusnya',
     markdownSupported: 'Markdown disokong',
@@ -146,7 +150,11 @@ const translations = {
     noPageSelected: 'No page selected',
     noPageSelectedHint: 'Choose a page from the sidebar, or add a new menu in Edit Mode.',
     editContent: 'Edit Content',
-    lastUpdated: 'Last updated locally',
+    lastUpdatedJustNow: 'Last updated just now',
+    lastUpdatedMinutes: 'Last updated {count} minutes ago',
+    lastUpdatedHours: 'Last updated {count} hours ago',
+    lastUpdatedDays: 'Last updated {count} days ago',
+    lastUpdatedDate: 'Last updated {date}',
     prev: 'Previous',
     next: 'Next',
     markdownSupported: 'Markdown supported',
@@ -258,6 +266,28 @@ function uid() {
 }
 
 /* ---------- Persistence ---------- */
+function ensurePageTimestamps(nodes, fallback = Date.now()) {
+  let changed = false;
+  (nodes || []).forEach((node) => {
+    const timestamp = typeof node.updatedAt === 'number'
+      ? node.updatedAt
+      : Date.parse(node.updatedAt || '');
+    if (!Number.isFinite(timestamp)) {
+      node.updatedAt = fallback;
+      changed = true;
+    } else if (node.updatedAt !== timestamp) {
+      node.updatedAt = timestamp;
+      changed = true;
+    }
+    if (ensurePageTimestamps(node.children, fallback)) changed = true;
+  });
+  return changed;
+}
+
+function touchNode(node) {
+  if (node) node.updatedAt = Date.now();
+}
+
 async function loadState() {
   try {
     const response = await fetch('/api/docbook', {
@@ -269,6 +299,8 @@ async function loadState() {
       const normalized = normalizeDocumentState(parsed);
       state.pages = normalized.pages;
       state.activeId = normalized.activeId;
+      state.bookTitle = normalized.bookTitle;
+      if (ensurePageTimestamps(state.pages)) saveState();
       return;
     }
   } catch (error) {
@@ -283,6 +315,7 @@ async function loadState() {
       state.pages = normalized.pages;
       state.activeId = normalized.activeId;
       state.bookTitle = normalized.bookTitle;
+      if (ensurePageTimestamps(state.pages)) saveState();
       return;
     } catch (error) {
       console.warn('Invalid local state, rebuilding default data.', error);
@@ -293,6 +326,7 @@ async function loadState() {
   state.pages = normalized.pages;
   state.activeId = normalized.activeId;
   state.bookTitle = normalized.bookTitle;
+  ensurePageTimestamps(state.pages);
   saveState();
 }
 
@@ -364,7 +398,8 @@ function duplicateNode(node) {
     id: uid(),
     title: `${node.title} (salinan)`,
     content: node.content || '',
-    children: node.children.map(duplicateNode)
+    children: node.children.map(duplicateNode),
+    updatedAt: Date.now()
   };
 }
 
@@ -427,7 +462,7 @@ function renderTreeNode(node) {
     e.stopPropagation();
     promptModal(getText('addSubmenu'), 'Nama submenu', '', (title) => {
       if (!title) return;
-      const newNode = { id: uid(), title, content: `# ${title}\n\nTulis kandungan di sini…`, children: [] };
+      const newNode = { id: uid(), title, content: `# ${title}\n\nTulis kandungan di sini…`, children: [], updatedAt: Date.now() };
       node.children.push(newNode);
       node._expanded = true;
       state.activeId = newNode.id;
@@ -443,6 +478,7 @@ function renderTreeNode(node) {
     promptModal(getText('rename'), 'Nama baharu', node.title, (title) => {
       if (!title) return;
       node.title = title;
+      touchNode(node);
       saveState();
       renderTree();
       renderContent();
@@ -525,7 +561,7 @@ function renderContent() {
         <button class="btn btn-primary" id="btnEditContent">✎ ${getText('editContent')}</button>
       </div>
     </div>
-    <div class="page-meta">${getText('lastUpdated')}</div>
+    <div class="page-meta">${formatLastUpdated(node)}</div>
     <div class="doc-layout">
       <div class="doc-main">
         <div class="markdown-body" id="pageBody"></div>
@@ -542,6 +578,7 @@ function renderContent() {
   const normalizedContent = normalizeLegacyMediaContent(node.content || '');
   if (normalizedContent !== (node.content || '')) {
     node.content = normalizedContent;
+    touchNode(node);
     saveState();
   }
   pageBody.innerHTML = renderMarkdown(normalizedContent);
@@ -556,6 +593,7 @@ function renderContent() {
     const newTitle = titleEl.textContent.trim();
     if (newTitle && newTitle !== node.title) {
       node.title = newTitle;
+        touchNode(node);
       saveState();
       renderTree();
     }
@@ -667,6 +705,34 @@ function applyEditModeToTitle(node) {
   if (!titleEl) return;
   const editing = document.body.classList.contains('edit-mode');
   titleEl.contentEditable = editing ? 'true' : 'false';
+}
+
+function formatLastUpdated(node) {
+  const rawTimestamp = typeof node?.updatedAt === 'number'
+    ? node.updatedAt
+    : Date.parse(node?.updatedAt || '');
+  const timestamp = Number.isFinite(rawTimestamp) ? rawTimestamp : Date.now();
+  const elapsed = Math.max(0, Date.now() - timestamp);
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (elapsed < minute) return getText('lastUpdatedJustNow');
+  if (elapsed < hour) {
+    return getText('lastUpdatedMinutes').replace('{count}', String(Math.floor(elapsed / minute)));
+  }
+  if (elapsed < day) {
+    return getText('lastUpdatedHours').replace('{count}', String(Math.floor(elapsed / hour)));
+  }
+  if (elapsed < 365 * day) {
+    return getText('lastUpdatedDays').replace('{count}', String(Math.floor(elapsed / day)));
+  }
+
+  const date = new Date(timestamp);
+  const dateLabel = [date.getDate(), date.getMonth() + 1, date.getFullYear()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join('/');
+  return getText('lastUpdatedDate').replace('{date}', dateLabel);
 }
 
 function escapeAttribute(value) {
@@ -1430,6 +1496,7 @@ function renderEditor(node) {
   document.getElementById('btnCancelEdit').addEventListener('click', renderContent);
   document.getElementById('btnSaveEdit').addEventListener('click', () => {
     node.content = textarea.value;
+    touchNode(node);
     saveState();
     renderContent();
   });
@@ -1839,7 +1906,7 @@ function initAddRoot() {
   document.getElementById('addRootPage').addEventListener('click', () => {
     promptModal('Tambah Menu', 'Nama menu', '', (title) => {
       if (!title) return;
-      const newNode = { id: uid(), title, content: `# ${title}\n\nTulis kandungan di sini…`, children: [] };
+      const newNode = { id: uid(), title, content: `# ${title}\n\nTulis kandungan di sini…`, children: [], updatedAt: Date.now() };
       state.pages.push(newNode);
       state.activeId = newNode.id;
       saveState();

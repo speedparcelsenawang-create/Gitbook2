@@ -84,7 +84,11 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   width: 220px;
   flex-shrink: 0;
 }
-.topbar-left.brand-moved { width: auto; }
+.topbar-left.brand-moved {
+  width: auto;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
 .brand-logo { font-size: 19px; }
 

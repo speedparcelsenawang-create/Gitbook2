@@ -94,9 +94,12 @@ const translations = {
     fileSelected: 'Fail dipilih',
     uploadingImage: 'Sedang memuat naik imej ke ImgBB…',
     uploadMediaTitle: 'Muat naik media',
-    uploadMediaHint: 'Pilih fail imej atau video untuk dimasukkan ke halaman.',
+    uploadMediaHint: 'Pilih fail atau masukkan URL image untuk dimasukkan ke halaman.',
     selectFile: 'Pilih fail',
     noFileSelected: 'Belum ada fail dipilih.',
+    noMediaSelected: 'Pilih fail atau masukkan URL image.',
+    or: 'atau',
+    addImage: 'Tambah image',
     upload: 'Muat naik',
     uploadTab: 'Upload',
     imageListTab: 'Senarai image',
@@ -188,9 +191,12 @@ const translations = {
     fileSelected: 'File selected',
     uploadingImage: 'Uploading image to ImgBB…',
     uploadMediaTitle: 'Upload media',
-    uploadMediaHint: 'Choose an image or video file to add to this page.',
+    uploadMediaHint: 'Choose a file or enter an image URL to add to this page.',
     selectFile: 'Choose file',
     noFileSelected: 'No file selected yet.',
+    noMediaSelected: 'Choose a file or enter an image URL.',
+    or: 'or',
+    addImage: 'Add image',
     upload: 'Upload',
     uploadTab: 'Upload',
     imageListTab: 'Image list',
@@ -1011,6 +1017,9 @@ function openMediaUploadModal(textarea) {
           <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
           <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
         </div>
+        <div class="media-upload-or"><span>${getText('or')}</span></div>
+        <label class="media-field-label" for="mediaUploadUrl">${getText('imageUrl')}</label>
+        <input id="mediaUploadUrl" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
         <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
         <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
         <p class="media-status" id="mediaStatus" aria-live="polite"></p>
@@ -1032,6 +1041,7 @@ function openMediaUploadModal(textarea) {
   const fileStatus = backdrop.querySelector('#mediaUploadFileStatus');
   const preview = backdrop.querySelector('#mediaUploadPreview');
   const captionInput = backdrop.querySelector('#mediaUploadCaption');
+  const urlInput = backdrop.querySelector('#mediaUploadUrl');
   const status = backdrop.querySelector('#mediaStatus');
   const submitButton = backdrop.querySelector('#mediaUploadSubmit');
   const uploadTab = backdrop.querySelector('#mediaUploadTab');
@@ -1066,6 +1076,7 @@ function openMediaUploadModal(textarea) {
   chooseButton.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
     selectedFile = fileInput.files[0] || null;
+    urlInput.value = '';
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = '';
     preview.innerHTML = '';
@@ -1088,13 +1099,36 @@ function openMediaUploadModal(textarea) {
       captionInput.value = imageCaptionFromFilename(selectedFile.name);
     }
   });
+  urlInput.addEventListener('input', () => {
+    if (!urlInput.value.trim()) return;
+    selectedFile = null;
+    fileInput.value = '';
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = '';
+    preview.innerHTML = '';
+    preview.hidden = true;
+    fileStatus.textContent = getText('noFileSelected');
+  });
   submitButton.addEventListener('click', async () => {
-    if (!selectedFile) {
-      status.textContent = getText('noFileSelected');
+    const imageUrl = urlInput.value.trim();
+    if (!selectedFile && !imageUrl) {
+      status.textContent = getText('noMediaSelected');
       return;
     }
     submitButton.disabled = true;
     chooseButton.disabled = true;
+    if (imageUrl) {
+      if (!isValidImageSource(imageUrl)) {
+        status.textContent = getText('invalidImageUrl');
+        submitButton.disabled = false;
+        chooseButton.disabled = false;
+        return;
+      }
+      const caption = captionInput.value.trim() || getText('defaultImageCaption');
+      insertTextAtSelection(textarea, `\n![${safeMarkdownCaption(caption)}](${imageUrl})\n`);
+      close();
+      return;
+    }
     status.textContent = selectedFile.type.startsWith('image/')
       ? getText('uploadingImage')
       : getText('uploadMediaTitle');

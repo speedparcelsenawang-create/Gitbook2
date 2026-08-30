@@ -1752,7 +1752,20 @@ function renderFilteredNode(node, matchIds, q) {
 }
 
 /* ---------- Init ---------- */
+function arrangeContentLayout() {
+  const layout = document.querySelector('.layout');
+  const topbar = document.querySelector('.topbar');
+  const content = document.getElementById('content');
+  if (!layout || !topbar || !content || layout.querySelector('.main-shell')) return;
+
+  const mainShell = document.createElement('div');
+  mainShell.className = 'main-shell';
+  layout.appendChild(mainShell);
+  mainShell.append(topbar, content);
+}
+
 async function init() {
+  arrangeContentLayout();
   await loadState();
   updateBrandName();
   applyLanguage(getLanguage());

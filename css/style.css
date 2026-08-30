@@ -491,14 +491,23 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 .layout {
   display: flex;
   width: 100%;
-  min-height: calc(100vh - 58px);
+  min-height: 100vh;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+.main-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
 }
 
 .sidebar {
   width: 280px;
   flex-shrink: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
@@ -1310,7 +1319,7 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   .sidebar {
     position: fixed;
     left: 0;
-    top: 58px;
+    top: 0;
     bottom: 0;
     z-index: 40;
     width: min(82vw, 280px);

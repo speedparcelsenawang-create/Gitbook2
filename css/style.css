@@ -635,6 +635,10 @@ body.sidebar-collapsed .content {
   display: flex; flex-direction: column; gap: 4px;
   cursor: pointer;
 }
+.prev-next-nav > .pn-link:only-child {
+  flex: 0 1 360px;
+  max-width: 360px;
+}
 .pn-link:hover { border-color: var(--accent); background: var(--accent-soft); }
 .pn-link.next { text-align: right; margin-left: auto; }
 .pn-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }

@@ -760,7 +760,7 @@ body.sidebar-collapsed .content {
 
 .tree-item { margin-bottom: 1px; }
 .tree-children {
-  margin-left: 16px;
+  margin-left: 21px;
   padding-left: 8px;
   border-left: 1px solid var(--border);
   display: grid;
@@ -790,15 +790,15 @@ body.sidebar-collapsed .content {
  .tree-row.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
 .toggle-caret {
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   border: none; background: transparent; color: var(--text-muted);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0;
   transition: transform .15s ease;
 }
 .toggle-caret svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 .toggle-caret:hover:not(:disabled) {
   border-radius: 6px;

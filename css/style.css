@@ -732,17 +732,17 @@ body.sidebar-collapsed .content {
 
 /* ===== Prev/Next navigation ===== */
 .prev-next-nav {
-  display: flex; gap: 12px; margin-top: 48px;
-  padding-top: 20px; border-top: 1px solid var(--border);
+  display: flex; gap: 12px; margin-top: 40px;
+  padding-top: 16px; border-top: 1px solid var(--border);
 }
 .pn-link {
-  flex: 1;
-  padding: 14px 16px;
+  flex: 0 1 360px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
   text-decoration: none;
   color: var(--text);
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: 2px;
   cursor: pointer;
 }
 .prev-next-nav > .pn-link:only-child {
@@ -751,8 +751,8 @@ body.sidebar-collapsed .content {
 }
 .pn-link:hover { border-color: var(--accent); background: var(--accent-soft); }
 .pn-link.next { text-align: right; margin-left: auto; }
-.pn-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.pn-title { font-weight: 600; font-size: 13px; }
+.pn-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.pn-title { font-weight: 600; font-size: 12px; }
 
 /* ===== Sidebar tree ===== */
 .menu-tree {

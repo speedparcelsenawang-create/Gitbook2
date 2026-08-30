@@ -1126,6 +1126,39 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   font-size: 13px;
   line-height: 1.5;
 }
+.media-modal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 9px;
+  background: var(--bg-soft);
+}
+.media-modal-tab {
+  flex: 1;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.media-modal-tab:hover {
+  color: var(--text);
+}
+.media-modal-tab.is-active {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}
+.media-modal-pane[hidden] {
+  display: none;
+}
 .media-upload-preview {
   display: grid;
   place-items: center;

@@ -98,6 +98,8 @@ const translations = {
     selectFile: 'Pilih fail',
     noFileSelected: 'Belum ada fail dipilih.',
     upload: 'Muat naik',
+    uploadTab: 'Upload',
+    imageListTab: 'Senarai image',
     uploadPasswordTitle: 'Buka akses upload',
     uploadPasswordPlaceholder: 'Password upload',
     uploadCancelled: 'Upload dibatalkan.',
@@ -190,6 +192,8 @@ const translations = {
     selectFile: 'Choose file',
     noFileSelected: 'No file selected yet.',
     upload: 'Upload',
+    uploadTab: 'Upload',
+    imageListTab: 'Image list',
     uploadPasswordTitle: 'Unlock image uploads',
     uploadPasswordPlaceholder: 'Upload password',
     uploadCancelled: 'Upload cancelled.',
@@ -996,29 +1000,37 @@ function openMediaUploadModal(textarea) {
         <button type="button" class="icon-btn media-upload-close" aria-label="${getText('close')}">×</button>
       </div>
       <p class="media-upload-hint">${getText('uploadMediaHint')}</p>
-      <div class="media-upload-preview" id="mediaUploadPreview" hidden></div>
-      <div class="media-upload-file-row">
-        <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
-        <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
-        <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
+      <div class="media-modal-tabs" role="tablist" aria-label="${getText('mediaManager')}">
+        <button type="button" class="media-modal-tab is-active" id="mediaUploadTab" role="tab" aria-selected="true" aria-controls="mediaUploadPane">${getText('uploadTab')}</button>
+        <button type="button" class="media-modal-tab" id="mediaListTab" role="tab" aria-selected="false" aria-controls="mediaListPane">${getText('imageListTab')}</button>
       </div>
-      <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
-      <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
-      <div class="media-modal-divider"></div>
-      <div class="media-modal-url-row">
-        <div class="media-insert-field">
-          <label for="mediaUrlInput">${getText('imageUrl')}</label>
-          <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
+      <section id="mediaUploadPane" class="media-modal-pane" role="tabpanel" aria-labelledby="mediaUploadTab">
+        <div class="media-upload-preview" id="mediaUploadPreview" hidden></div>
+        <div class="media-upload-file-row">
+          <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
+          <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
+          <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
         </div>
-        <div class="media-insert-field">
-          <label for="mediaNameInput">${getText('imageName')}</label>
-          <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+        <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
+        <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+        <div class="media-modal-divider"></div>
+        <div class="media-modal-url-row">
+          <div class="media-insert-field">
+            <label for="mediaUrlInput">${getText('imageUrl')}</label>
+            <input id="mediaUrlInput" type="url" placeholder="${escapeAttribute(getText('imageUrlPlaceholder'))}">
+          </div>
+          <div class="media-insert-field">
+            <label for="mediaNameInput">${getText('imageName')}</label>
+            <input id="mediaNameInput" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+          </div>
+          <button type="button" class="btn btn-ghost" id="btnInsertImage">＋ ${getText('insertImage')}</button>
         </div>
-        <button type="button" class="btn btn-ghost" id="btnInsertImage">＋ ${getText('insertImage')}</button>
-      </div>
-      <p class="media-status" id="mediaStatus" aria-live="polite"></p>
-      <div class="media-modal-list-heading">${getText('mediaManager')}</div>
-      <div class="media-list media-modal-list" id="mediaList"></div>
+        <p class="media-status" id="mediaStatus" aria-live="polite"></p>
+      </section>
+      <section id="mediaListPane" class="media-modal-pane" role="tabpanel" aria-labelledby="mediaListTab" hidden>
+        <div class="media-modal-list-heading">${getText('mediaManager')}</div>
+        <div class="media-list media-modal-list" id="mediaList"></div>
+      </section>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="mediaUploadCancel">${getText('cancel')}</button>
         <button type="button" class="btn btn-primary" id="mediaUploadSubmit">📤 ${getText('upload')}</button>
@@ -1036,6 +1048,10 @@ function openMediaUploadModal(textarea) {
   const submitButton = backdrop.querySelector('#mediaUploadSubmit');
   const urlInput = backdrop.querySelector('#mediaUrlInput');
   const nameInput = backdrop.querySelector('#mediaNameInput');
+  const uploadTab = backdrop.querySelector('#mediaUploadTab');
+  const listTab = backdrop.querySelector('#mediaListTab');
+  const uploadPane = backdrop.querySelector('#mediaUploadPane');
+  const listPane = backdrop.querySelector('#mediaListPane');
   let selectedFile = null;
   let previewUrl = '';
 
@@ -1048,6 +1064,18 @@ function openMediaUploadModal(textarea) {
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) close();
   });
+  const setActiveTab = (tab) => {
+    const showList = tab === 'list';
+    uploadTab.classList.toggle('is-active', !showList);
+    listTab.classList.toggle('is-active', showList);
+    uploadTab.setAttribute('aria-selected', String(!showList));
+    listTab.setAttribute('aria-selected', String(showList));
+    uploadPane.hidden = showList;
+    listPane.hidden = !showList;
+    submitButton.hidden = showList;
+  };
+  uploadTab.addEventListener('click', () => setActiveTab('upload'));
+  listTab.addEventListener('click', () => setActiveTab('list'));
   renderMediaManager(textarea);
   backdrop.querySelector('#btnInsertImage').addEventListener('click', () => {
     const url = urlInput.value.trim();

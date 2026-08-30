@@ -1666,6 +1666,7 @@ function renderEditor(node) {
 
   document.getElementById('btnUploadMedia').addEventListener('click', () => openMediaUploadModal(textarea));
   contentEl.querySelectorAll('.tb-btn').forEach(button => {
+    if (!button.dataset.prefix && !button.dataset.snippet && !button.dataset.callout) return;
     button.addEventListener('click', () => {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;

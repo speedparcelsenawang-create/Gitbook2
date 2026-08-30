@@ -2022,6 +2022,9 @@ function openSharePopover() {
 
   syncSharedPageUrl(node.id);
   const shareUrl = window.location.href;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'share-backdrop';
+  backdrop.setAttribute('aria-hidden', 'true');
   const popover = document.createElement('div');
   popover.id = 'sharePopover';
   popover.className = 'share-popover';
@@ -2046,7 +2049,7 @@ function openSharePopover() {
     <button type="button" class="btn btn-ghost share-native-button" id="nativeShareButton">${escapeHtml(getText('nativeShare'))}</button>
     <p class="share-status" id="shareStatus" aria-live="polite"></p>
   `;
-  document.body.appendChild(popover);
+  document.body.append(backdrop, popover);
 
   const linkInput = popover.querySelector('#shareLinkInput');
   const copyButton = popover.querySelector('#copyShareLink');
@@ -2055,13 +2058,14 @@ function openSharePopover() {
   const closeButton = popover.querySelector('.share-close');
 
   const close = () => {
+    backdrop.remove();
     popover.remove();
     document.removeEventListener('pointerdown', handleOutsideClick);
     document.removeEventListener('keydown', handleEscape);
     if (closeSharePopover === close) closeSharePopover = null;
   };
   const handleOutsideClick = (event) => {
-    if (!popover.contains(event.target) && event.target !== shareButton) close();
+    if (event.target === backdrop || (!popover.contains(event.target) && event.target !== shareButton)) close();
   };
   const handleEscape = (event) => {
     if (event.key === 'Escape') close();

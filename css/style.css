@@ -166,6 +166,16 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   stroke-linecap: round;
 }
 
+.share-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 109;
+  background: rgba(15, 23, 42, .2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: share-backdrop-in .18s ease-out;
+}
+
 .share-popover {
   position: fixed;
   top: 68px;
@@ -178,6 +188,10 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   background: var(--bg);
   box-shadow: 0 18px 50px rgba(15, 23, 42, .18);
   animation: share-popover-in .18s ease-out;
+}
+@keyframes share-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes share-popover-in {
   from { opacity: 0; transform: translateY(-6px) scale(.98); }

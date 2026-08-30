@@ -1117,6 +1117,62 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
 .media-edit-status {
   color: var(--danger);
 }
+.media-upload-modal {
+  width: min(460px, 100%);
+}
+.media-upload-hint {
+  margin: -3px 0 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.media-upload-preview {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+.media-upload-preview img,
+.media-upload-preview video {
+  display: block;
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+}
+.media-upload-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.media-upload-file-row .media-file-status {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-upload-modal > input {
+  width: 100%;
+  min-height: 38px;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 13px;
+}
+.media-upload-modal .media-edit-status {
+  min-height: 18px;
+  margin: 8px 0 4px;
+  font-size: 12px;
+}
 .media-list {
   display: grid;
   gap: 8px;

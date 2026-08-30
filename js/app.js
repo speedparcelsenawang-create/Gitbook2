@@ -93,6 +93,11 @@ const translations = {
     imageDeleted: 'Imej dipadam.',
     fileSelected: 'Fail dipilih',
     uploadingImage: 'Sedang memuat naik imej ke ImgBB…',
+    uploadMediaTitle: 'Muat naik media',
+    uploadMediaHint: 'Pilih fail imej atau video untuk dimasukkan ke halaman.',
+    selectFile: 'Pilih fail',
+    noFileSelected: 'Belum ada fail dipilih.',
+    upload: 'Muat naik',
     uploadPasswordTitle: 'Buka akses upload',
     uploadPasswordPlaceholder: 'Password upload',
     uploadCancelled: 'Upload dibatalkan.',
@@ -180,6 +185,11 @@ const translations = {
     imageDeleted: 'Image deleted.',
     fileSelected: 'File selected',
     uploadingImage: 'Uploading image to ImgBB…',
+    uploadMediaTitle: 'Upload media',
+    uploadMediaHint: 'Choose an image or video file to add to this page.',
+    selectFile: 'Choose file',
+    noFileSelected: 'No file selected yet.',
+    upload: 'Upload',
     uploadPasswordTitle: 'Unlock image uploads',
     uploadPasswordPlaceholder: 'Upload password',
     uploadCancelled: 'Upload cancelled.',
@@ -931,13 +941,13 @@ function setMediaStatus(message, isError = false) {
   status.classList.toggle('is-error', isError);
 }
 
-async function handleMediaUpload(files, textarea) {
+async function handleMediaUpload(files, textarea, captionOverride = '') {
   const selectedFiles = [...(files || [])];
   const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
   const videoFiles = selectedFiles.filter(file => file.type.startsWith('video/'));
   if (!imageFiles.length && !videoFiles.length) {
     setMediaStatus(getText('invalidImageFile'), true);
-    return;
+    return false;
   }
 
   try {
@@ -945,7 +955,8 @@ async function handleMediaUpload(files, textarea) {
     const imageSnippets = [];
     for (const file of imageFiles) {
       const src = await uploadImageToImgBB(file);
-      imageSnippets.push(`![${safeMarkdownCaption(imageCaptionFromFilename(file.name))}](${src})`);
+      const caption = captionOverride || imageCaptionFromFilename(file.name);
+      imageSnippets.push(`![${safeMarkdownCaption(caption)}](${src})`);
     }
     const videoItems = videoFiles.map((file) => ({
       type: 'video',
@@ -961,10 +972,112 @@ async function handleMediaUpload(files, textarea) {
 
     insertTextAtSelection(textarea, `\n${snippets.join('\n')}\n`);
     setMediaStatus(getText('imageReady'));
+    return true;
   } catch (error) {
     console.warn('Unable to upload image to ImgBB', error);
     setMediaStatus(error.message || getText('invalidImageFile'), true);
+    return false;
   }
+}
+
+function openMediaUploadModal(textarea) {
+  const existing = document.querySelector('.media-upload-backdrop');
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop media-upload-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal media-upload-modal" role="dialog" aria-modal="true" aria-labelledby="mediaUploadTitle">
+      <div class="media-edit-heading">
+        <div>
+          <p class="media-edit-eyebrow">${getText('mediaManager')}</p>
+          <h3 id="mediaUploadTitle">${getText('uploadMediaTitle')}</h3>
+        </div>
+        <button type="button" class="icon-btn media-upload-close" aria-label="${getText('close')}">×</button>
+      </div>
+      <p class="media-upload-hint">${getText('uploadMediaHint')}</p>
+      <div class="media-upload-preview" id="mediaUploadPreview" hidden></div>
+      <div class="media-upload-file-row">
+        <button type="button" class="btn btn-ghost" id="chooseMediaUploadFile">📁 ${getText('selectFile')}</button>
+        <span class="media-file-status" id="mediaUploadFileStatus">${getText('noFileSelected')}</span>
+        <input type="file" id="mediaUploadFileInput" accept="image/*,video/*" hidden>
+      </div>
+      <label class="media-field-label" for="mediaUploadCaption">${getText('imageName')}</label>
+      <input id="mediaUploadCaption" type="text" placeholder="${escapeAttribute(getText('imageNamePlaceholder'))}">
+      <p class="media-edit-status" id="mediaUploadStatus"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="mediaUploadCancel">${getText('cancel')}</button>
+        <button type="button" class="btn btn-primary" id="mediaUploadSubmit">📤 ${getText('upload')}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const fileInput = backdrop.querySelector('#mediaUploadFileInput');
+  const chooseButton = backdrop.querySelector('#chooseMediaUploadFile');
+  const fileStatus = backdrop.querySelector('#mediaUploadFileStatus');
+  const preview = backdrop.querySelector('#mediaUploadPreview');
+  const captionInput = backdrop.querySelector('#mediaUploadCaption');
+  const status = backdrop.querySelector('#mediaUploadStatus');
+  const submitButton = backdrop.querySelector('#mediaUploadSubmit');
+  let selectedFile = null;
+  let previewUrl = '';
+
+  const close = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    backdrop.remove();
+  };
+  backdrop.querySelector('.media-upload-close').addEventListener('click', close);
+  backdrop.querySelector('#mediaUploadCancel').addEventListener('click', close);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) close();
+  });
+  chooseButton.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    selectedFile = fileInput.files[0] || null;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = '';
+    preview.innerHTML = '';
+    preview.hidden = true;
+    status.textContent = '';
+    if (!selectedFile) {
+      fileStatus.textContent = getText('noFileSelected');
+      return;
+    }
+
+    fileStatus.textContent = `${getText('fileSelected')}: ${selectedFile.name}`;
+    previewUrl = URL.createObjectURL(selectedFile);
+    if (selectedFile.type.startsWith('video/')) {
+      preview.innerHTML = `<video src="${escapeAttribute(previewUrl)}" controls muted></video>`;
+    } else if (selectedFile.type.startsWith('image/')) {
+      preview.innerHTML = `<img src="${escapeAttribute(previewUrl)}" alt="${escapeAttribute(selectedFile.name)}">`;
+    }
+    preview.hidden = false;
+    if (!captionInput.value.trim() && selectedFile.type.startsWith('image/')) {
+      captionInput.value = imageCaptionFromFilename(selectedFile.name);
+    }
+  });
+  submitButton.addEventListener('click', async () => {
+    if (!selectedFile) {
+      status.textContent = getText('noFileSelected');
+      return;
+    }
+    submitButton.disabled = true;
+    chooseButton.disabled = true;
+    status.textContent = selectedFile.type.startsWith('image/')
+      ? getText('uploadingImage')
+      : getText('uploadMediaTitle');
+    const uploaded = await handleMediaUpload([selectedFile], textarea, captionInput.value.trim());
+    if (uploaded) {
+      close();
+      return;
+    }
+    status.textContent = document.getElementById('mediaStatus')?.textContent || getText('invalidImageFile');
+    submitButton.disabled = false;
+    chooseButton.disabled = false;
+  });
+
+  captionInput.focus();
 }
 
 function renderMediaManager(textarea) {
@@ -1150,7 +1263,6 @@ function renderEditor(node) {
           <button class="tb-btn" id="btnPreview" title="${getText('preview')}">◉</button>
         </div>
 
-        <input type="file" id="mediaUploadInput" accept="image/*,video/*" multiple hidden>
         <section class="media-manager" id="mediaManager" aria-labelledby="mediaManagerTitle">
           <div class="media-manager-header">
             <div>
@@ -1188,16 +1300,11 @@ function renderEditor(node) {
     </div>
   `;
   const textarea = document.getElementById('editorTextarea');
-  const mediaInput = document.getElementById('mediaUploadInput');
   renderMediaManager(textarea);
   textarea.addEventListener('input', () => renderMediaManager(textarea));
 
-  document.getElementById('btnUploadMedia').addEventListener('click', () => mediaInput.click());
-  document.getElementById('btnUploadImage').addEventListener('click', () => mediaInput.click());
-  mediaInput.addEventListener('change', async () => {
-    await handleMediaUpload(mediaInput.files, textarea);
-    mediaInput.value = '';
-  });
+  document.getElementById('btnUploadMedia').addEventListener('click', () => openMediaUploadModal(textarea));
+  document.getElementById('btnUploadImage').addEventListener('click', () => openMediaUploadModal(textarea));
   document.getElementById('btnInsertImage').addEventListener('click', () => {
     const urlInput = document.getElementById('mediaUrlInput');
     const nameInput = document.getElementById('mediaNameInput');

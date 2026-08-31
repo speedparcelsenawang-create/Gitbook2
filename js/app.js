@@ -47,8 +47,6 @@ const translations = {
     ok: 'OK',
     save: 'Simpan',
     searchPlaceholder: 'Cari dokumen…',
-    openSidebar: 'Buka sidebar',
-    closeSidebar: 'Tutup sidebar',
     searchNotFound: 'Search for "{query}" not found',
     searchSuggestion: 'Try a different keyword or check your spelling.',
     addMenu: 'Tambah Menu',
@@ -171,8 +169,6 @@ const translations = {
     ok: 'OK',
     save: 'Save',
     searchPlaceholder: 'Search documents…',
-    openSidebar: 'Open sidebar',
-    closeSidebar: 'Close sidebar',
     searchNotFound: 'Search for "{query}" not found',
     searchSuggestion: 'Try a different keyword or check your spelling.',
     addMenu: 'Add Menu',
@@ -1802,8 +1798,9 @@ function getLanguage() {
 
 function updateBrandName() {
   const title = normalizeBookTitle(state.bookTitle);
-  const brandNameEl = document.querySelector('.brand-name');
-  if (brandNameEl) brandNameEl.textContent = title;
+  document.querySelectorAll('.brand-name, .mobile-brand-name').forEach((brandNameEl) => {
+    brandNameEl.textContent = title;
+  });
   document.title = `${title} — Modern Documentation`;
   state.bookTitle = title;
 }
@@ -2238,7 +2235,6 @@ function applySidebarState(collapsed) {
   document.body.classList.toggle('sidebar-collapsed', collapsed);
   sidebarEl.classList.toggle('collapsed', collapsed);
   sidebarEl.setAttribute('aria-expanded', String(!collapsed));
-  updateSidebarToggleIcon(collapsed);
   localStorage.setItem(SIDEBAR_KEY, String(collapsed));
 
   if (isMobile) {
@@ -2246,20 +2242,6 @@ function applySidebarState(collapsed) {
   } else {
     sidebarEl.classList.remove('mobile-open');
   }
-}
-
-function updateSidebarToggleIcon(collapsed) {
-  const toggle = document.getElementById('sidebarToggle');
-  const path = toggle?.querySelector('path');
-  if (!toggle || !path) return;
-
-  const isMobileOpen = window.innerWidth <= 800 && !collapsed;
-  path.setAttribute('d', isMobileOpen
-    ? 'M6 6l12 12M18 6L6 18'
-    : 'M3 6h18M3 12h18M3 18h18');
-  toggle.setAttribute('aria-expanded', String(!collapsed));
-  toggle.setAttribute('aria-label', getText(isMobileOpen ? 'closeSidebar' : 'openSidebar'));
-  toggle.setAttribute('title', getText(isMobileOpen ? 'closeSidebar' : 'openSidebar'));
 }
 
 /* ---------- Add root page ---------- */

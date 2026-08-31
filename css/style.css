@@ -108,7 +108,7 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   flex-wrap: nowrap;
   gap: 6px;
   padding-left: 12px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-strong);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
@@ -172,6 +172,14 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   cursor: pointer;
 }
 .icon-btn:hover { background: var(--bg-soft); border-color: var(--border); }
+#sidebarToggle,
+#shareButton {
+  border-color: var(--border-strong);
+}
+#sidebarToggle:hover,
+#shareButton:hover {
+  border-color: var(--border-strong);
+}
 #sidebarToggle svg path {
   fill: none;
   stroke: currentColor;
@@ -783,7 +791,7 @@ body.sidebar-collapsed .content {
   flex: 0 0 180px;
   max-width: 180px;
   padding: 10px 12px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 8px;
   text-decoration: none;
   color: var(--text);

@@ -1862,14 +1862,18 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   .page-header { flex-direction: column; }
   .page-actions { width: 100%; }
   .page-actions .btn { width: 100%; justify-content: center; }
-  .prev-next-nav { flex-direction: column; }
+  .prev-next-nav {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-between;
+  }
   .pn-link,
   .prev-next-nav > .pn-link:only-child {
-    flex: 0 0 auto;
-    width: 100%;
-    max-width: none;
+    flex: 0 1 180px;
+    width: 180px;
+    max-width: 180px;
   }
-  .pn-link.next { text-align: left; }
+  .pn-link.next { text-align: right; }
   .media-insert-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }

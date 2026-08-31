@@ -174,11 +174,11 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 .icon-btn:hover { background: var(--bg-soft); border-color: var(--border); }
 #sidebarToggle,
 #shareButton {
-  border-color: var(--border-strong);
+  border-color: transparent;
 }
 #sidebarToggle:hover,
 #shareButton:hover {
-  border-color: var(--border-strong);
+  border-color: transparent;
 }
 #sidebarToggle svg path {
   fill: none;

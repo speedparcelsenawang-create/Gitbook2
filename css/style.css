@@ -622,6 +622,23 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 .btn-ghost:hover { background: var(--bg-soft); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-hover); }
+.btn:disabled,
+.btn[disabled] {
+  cursor: not-allowed;
+  opacity: 1;
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.editor-actions #btnSaveEdit:not(:disabled) {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.editor-actions #btnSaveEdit:not(:disabled):hover {
+  background: #15803d;
+  border-color: #15803d;
+}
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 
 #editModeToggle.active {

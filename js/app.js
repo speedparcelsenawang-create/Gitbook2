@@ -1632,13 +1632,16 @@ function renderEditor(node) {
   const textarea = document.getElementById('editorTextarea');
   const editorStatus = document.getElementById('editorSaveState');
   const characterCount = document.getElementById('editorCharacterCount');
+  const saveButton = document.getElementById('btnSaveEdit');
   const initialContent = node.content || '';
   const updateEditorMeta = () => {
+    const hasChanges = textarea.value !== initialContent;
     characterCount.textContent = `${textarea.value.length.toLocaleString()} ${getText('characters')}`;
-    editorStatus.textContent = textarea.value === initialContent
+    editorStatus.textContent = !hasChanges
       ? getText('editorReady')
       : getText('editorUnsaved');
-    editorStatus.classList.toggle('is-unsaved', textarea.value !== initialContent);
+    editorStatus.classList.toggle('is-unsaved', hasChanges);
+    saveButton.disabled = !hasChanges;
     renderMediaManager(textarea);
   };
   textarea.addEventListener('input', updateEditorMeta);
@@ -1689,6 +1692,7 @@ function renderEditor(node) {
         }[variant] || 'INFO';
         const replacement = `> [!${label}]\n> ${selected}\n`;
         textarea.setRangeText(replacement, start, end, 'select');
+        updateEditorMeta();
         textarea.focus();
         return;
       }
@@ -1696,12 +1700,14 @@ function renderEditor(node) {
       if (button.dataset.snippet) {
         const replacement = button.dataset.snippet;
         textarea.setRangeText(replacement, start, end, 'select');
+        updateEditorMeta();
         textarea.focus();
         return;
       }
 
       const replacement = `${button.dataset.prefix}${selected}${button.dataset.suffix || ''}`;
       textarea.setRangeText(replacement, start, end, 'select');
+      updateEditorMeta();
       textarea.focus();
     });
   });
@@ -1721,16 +1727,18 @@ function renderEditor(node) {
     previewButton.title = getText('backToEditor');
   });
   document.getElementById('btnCancelEdit').addEventListener('click', renderContent);
-  document.getElementById('btnSaveEdit').addEventListener('click', () => {
+  const saveEditor = () => {
+    if (textarea.value === initialContent) return;
     node.content = textarea.value;
     touchNode(node);
     saveState();
     renderContent();
-  });
+  };
+  saveButton.addEventListener('click', saveEditor);
   textarea.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
       event.preventDefault();
-      document.getElementById('btnSaveEdit').click();
+      saveEditor();
     }
   });
 }

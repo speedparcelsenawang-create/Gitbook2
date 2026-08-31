@@ -95,20 +95,6 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
 .brand-logo { font-size: 19px; }
-.mobile-brand {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 800;
-}
-.mobile-brand-logo { font-size: 17px; }
-.mobile-brand-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .topbar-center {
   display: none;
@@ -1801,7 +1787,6 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
     gap: 6px;
   }
   .brand-name { display: none; }
-  .mobile-brand { display: flex; }
   .topbar-left {
     gap: 6px;
   }
@@ -1811,12 +1796,6 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
     font-size: 11px;
   }
   .search-box { max-width: none; }
-  .mobile-brand {
-    flex: 0 1 100px;
-  }
-  .mobile-brand-name {
-    font-size: 13px;
-  }
   .topbar-right {
     margin-left: 0;
     gap: 4px;
@@ -1829,12 +1808,15 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   .sidebar-header > .brand .brand-name { display: inline; }
   .sidebar-header > .brand { padding-bottom: 16px; }
   .layout { position: relative; }
+  .sidebar-overlay {
+    z-index: 55;
+  }
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
-    z-index: 40;
+    z-index: 60;
     width: 280px;
     min-width: 280px;
     max-width: 280px;

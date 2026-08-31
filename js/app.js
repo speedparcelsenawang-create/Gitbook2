@@ -1798,7 +1798,7 @@ function getLanguage() {
 
 function updateBrandName() {
   const title = normalizeBookTitle(state.bookTitle);
-  document.querySelectorAll('.brand-name, .mobile-brand-name').forEach((brandNameEl) => {
+  document.querySelectorAll('.brand-name').forEach((brandNameEl) => {
     brandNameEl.textContent = title;
   });
   document.title = `${title} — Modern Documentation`;

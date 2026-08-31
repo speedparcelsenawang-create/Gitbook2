@@ -93,6 +93,20 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
 .brand-logo { font-size: 19px; }
+.mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+.mobile-brand-logo { font-size: 17px; }
+.mobile-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .topbar-center {
   flex: 1;
@@ -1776,6 +1790,11 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
     padding-bottom: 8px;
   }
   .brand-name { display: none; }
+  .mobile-brand { display: flex; }
+  .topbar-left.brand-moved {
+    padding-right: 0;
+    border-right: none;
+  }
   .topbar-center { order: 3; flex-basis: 100%; }
   .search-box { max-width: none; }
   .topbar-right { margin-left: auto; }

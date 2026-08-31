@@ -83,13 +83,15 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 220px;
-  flex-shrink: 0;
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-shrink: 1;
 }
 .topbar-left.brand-moved {
   width: auto;
-  padding-right: 12px;
-  border-right: 1px solid var(--border);
+  padding-right: 0;
+  border-right: none;
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
 .brand-logo { font-size: 19px; }
@@ -109,20 +111,29 @@ svg { width: 18px; height: 18px; fill: currentColor; }
 }
 
 .topbar-center {
-  flex: 1;
-  display: flex;
-  justify-content: flex-start;
-  min-width: 0;
+  display: none;
 }
 .topbar-breadcrumb {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+.topbar-breadcrumb > * {
+  flex-shrink: 0;
+}
+.topbar-breadcrumb > :last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .topbar-breadcrumb .crumb-link {
   cursor: pointer;
@@ -1784,21 +1795,33 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
 @media (max-width: 800px) {
   .topbar {
     padding: 0 10px;
-    flex-wrap: wrap;
-    height: auto;
+    flex-wrap: nowrap;
+    height: 58px;
     min-height: 58px;
-    padding-bottom: 8px;
+    gap: 6px;
   }
   .brand-name { display: none; }
   .mobile-brand { display: flex; }
-  .topbar-left.brand-moved {
-    padding-right: 0;
-    border-right: none;
+  .topbar-left {
+    gap: 6px;
   }
-  .topbar-center { order: 3; flex-basis: 100%; }
+  .topbar-breadcrumb {
+    gap: 4px;
+    padding-left: 8px;
+    font-size: 11px;
+  }
   .search-box { max-width: none; }
-  .topbar-right { margin-left: auto; }
-  .topbar-center { margin-top: 2px; }
+  .mobile-brand {
+    flex: 0 1 100px;
+  }
+  .mobile-brand-name {
+    font-size: 13px;
+  }
+  .topbar-right {
+    margin-left: 0;
+    gap: 4px;
+    flex-shrink: 0;
+  }
   .share-popover {
     top: 70px;
     right: 12px;

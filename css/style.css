@@ -941,8 +941,8 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
   gap: 16px;
   margin-bottom: 8px;
 }
-.page-title {
-  font-size: 28px;
+.page-header .page-title {
+  font-size: 26px;
   font-weight: 800;
   margin: 0;
   line-height: 1.25;
@@ -1858,7 +1858,7 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
     padding-right: 18px;
   }
   .content { padding: 24px 18px; }
-  .page-title { font-size: 27px; }
+  .page-header .page-title { font-size: 25px; }
   .page-header { flex-direction: column; }
   .page-actions { width: 100%; }
   .page-actions .btn { width: 100%; justify-content: center; }
@@ -1936,7 +1936,7 @@ body.edit-mode .sidebar-footer.edit-only { display: flex !important; }
     padding-left: 10px;
     padding-right: 10px;
   }
-  .page-title { font-size: 24px; }
+  .page-header .page-title { font-size: 22px; }
   .markdown-body { font-size: 15px; }
   .editor-page-heading {
     align-items: flex-start;
